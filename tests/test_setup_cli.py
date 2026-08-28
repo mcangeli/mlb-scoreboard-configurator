@@ -23,5 +23,18 @@ class SetupCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             self.assertEqual(detect_scoreboard_root(td), Path(td).resolve())
 
+    def test_detect_venv_prefers_invoked_console_script(self):
+        from mlb_scoreboard_configurator.setup_cli import detect_venv
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "scoreboard"
+            bindir = root / "venv" / "bin"
+            bindir.mkdir(parents=True)
+            for name in ("mlb-scoreboard-configurator", "mlb-scoreboard-hotspot-watch",
+                         "mlb-scoreboard-configurator-setup"):
+                (bindir / name).write_text("")
+            with patch("sys.argv", [str(bindir / "mlb-scoreboard-configurator-setup")]), \
+                 patch("sys.executable", "/usr/bin/python3"):
+                self.assertEqual(detect_venv(root), bindir.resolve())
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1
+# MLB LED Scoreboard Configurator — V2.1.2
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -39,6 +39,54 @@ cd ~/mlb-led-scoreboard
 sudo venv/bin/pip install git+https://github.com/mcangeli/mlb-scoreboard-configurator.git
 sudo venv/bin/mlb-scoreboard-configurator-setup
 ```
+
+### First login
+
+After setup, open:
+
+```text
+http://<raspberry-pi-ip>:8080
+```
+
+The default login is:
+
+```text
+Username: admin
+Password: scoreboard
+```
+
+**Change the default password after your first login.** The web credentials are
+stored in:
+
+```text
+/etc/mlb-scoreboard-configurator.env
+```
+
+Edit the file:
+
+```bash
+sudo nano /etc/mlb-scoreboard-configurator.env
+```
+
+Change these values as desired:
+
+```text
+CONFIGURATOR_USERNAME=admin
+CONFIGURATOR_PASSWORD=scoreboard
+```
+
+Then restart the configurator so the new credentials take effect:
+
+```bash
+sudo systemctl restart mlb-scoreboard-configurator.service
+```
+
+You can verify the service is running with:
+
+```bash
+sudo systemctl status mlb-scoreboard-configurator.service
+```
+
 
 The first command installs the Python/Bullpen package into the scoreboard's
 existing virtual environment.
@@ -140,3 +188,26 @@ configurator = "mlb_scoreboard_configurator.plugin:load"
 
 The returned renderer deliberately never claims a rotation slot; the web portal
 is a management utility rather than an LED screen.
+
+
+## V2.1.1 fix
+
+The setup command now detects the scoreboard virtualenv correctly when invoked
+with `sudo venv/bin/mlb-scoreboard-configurator-setup`. V2.1 could incorrectly
+use `/usr/bin` because `sudo` may cause Python interpreter discovery to resolve
+outside the scoreboard venv.
+
+You can still override detection explicitly with:
+
+```bash
+sudo venv/bin/mlb-scoreboard-configurator-setup \
+  --root "$(pwd)" \
+  --venv-bin "$(pwd)/venv/bin"
+```
+
+
+## V2.1.2 documentation update
+
+The installation section now shows the configurator URL, default username and
+password, the location of the credentials file, and the commands needed to
+change credentials and restart the service.

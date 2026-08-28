@@ -93,12 +93,33 @@ def detect_venv(root: Path, explicit=None):
     if explicit:
         venv = Path(explicit).expanduser().resolve()
     else:
-        # The console script normally lives inside the venv's bin directory.
+        candidates = []
+
+        # Prefer the directory containing the invoked console script. This
+        # remains correct when the command is run through sudo, where
+        # sys.executable may resolve to /usr/bin/python.
+        invoked = Path(sys.argv[0]).expanduser()
+        try:
+            invoked = invoked.resolve()
+            if invoked.parent.name == "bin":
+                candidates.append(invoked.parent)
+        except Exception:
+            pass
+
+        # Then try the active Python interpreter.
         current = Path(sys.executable).resolve()
         if current.parent.name == "bin":
-            venv = current.parent
-        else:
-            venv = root / "venv" / "bin"
+            candidates.append(current.parent)
+
+        # Finally fall back to the conventional scoreboard venv.
+        candidates.append((root / "venv" / "bin").resolve())
+
+        required = ["mlb-scoreboard-configurator", "mlb-scoreboard-hotspot-watch"]
+        venv = next(
+            (candidate for candidate in candidates
+             if all((candidate / name).exists() for name in required)),
+            candidates[-1],
+        )
 
     required = ["mlb-scoreboard-configurator", "mlb-scoreboard-hotspot-watch"]
     missing = [name for name in required if not (venv / name).exists()]
