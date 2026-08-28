@@ -1,0 +1,11 @@
+[Unit]
+Description=MLB LED Scoreboard fallback hotspot check
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/mlb-scoreboard-configurator.env
+ExecStart=/home/pi/mlb-led-scoreboard/venv/bin/mlb-scoreboard-hotspot-watch
+User=root
+Group=root

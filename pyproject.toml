@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlb-scoreboard-configurator"
+version = "2.1.0"
+description = "Bullpen-compatible web configurator for MLB-LED-Scoreboard"
+requires-python = ">=3.9"
+dependencies = [
+  "Flask>=2.3,<4",
+  "jsonschema>=4.18",
+  "waitress>=2.1"
+]
+
+[project.scripts]
+mlb-scoreboard-configurator = "mlb_scoreboard_configurator.web:main"
+mlb-scoreboard-hotspot-watch = "mlb_scoreboard_configurator.hotspot_watch:main"
+mlb-scoreboard-configurator-setup = "mlb_scoreboard_configurator.setup_cli:main"
+
+[project.entry-points."bullpen.mlbled.plugin"]
+configurator = "mlb_scoreboard_configurator.plugin:load"
+
+[tool.setuptools]
+packages = ["mlb_scoreboard_configurator"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+mlb_scoreboard_configurator = ["templates/*.html", "static/*.css", "static/*.js"]

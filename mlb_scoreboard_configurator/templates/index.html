@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MLB LED Scoreboard Configurator</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header>
+  <div>
+    <div class="eyebrow">MLB-LED-SCOREBOARD</div>
+    <h1>Scoreboard Configurator</h1>
+  </div>
+  <div id="serviceBadge" class="badge">Loading service…</div>
+</header>
+
+<div class="shell">
+  <aside>
+    <button class="nav active" data-view="editor">⚙ Configuration</button>
+    <button class="nav" data-view="wifi">📶 Wi-Fi & Hotspot</button>
+    <button class="nav" data-view="service">⏻ Scoreboard Service</button>
+    <div class="divider"></div>
+    <div class="small muted">Configuration file</div>
+    <select id="fileSelect"></select>
+    <div id="fileHelp" class="help"></div>
+  </aside>
+
+  <main>
+    <div id="toast" class="toast hidden"></div>
+
+    <section id="editorView" class="view">
+      <div class="toolbar">
+        <div>
+          <h2 id="fileTitle">Configuration</h2>
+          <p id="fileSubtitle" class="muted"></p>
+        </div>
+        <div class="actions">
+          <button id="modeBtn" class="secondary">Raw JSON</button>
+          <button id="validateBtn" class="secondary">Validate</button>
+          <button id="backupsBtn" class="secondary">Backups</button>
+          <button id="saveBtn" class="primary">Save changes</button>
+        </div>
+      </div>
+      <div id="validationBox" class="validation hidden"></div>
+      <div id="formEditor"></div>
+      <textarea id="rawEditor" class="raw hidden" spellcheck="false"></textarea>
+    </section>
+
+    <section id="wifiView" class="view hidden">
+      <div class="toolbar"><div><h2>Wi-Fi & setup hotspot</h2><p class="muted">Join the home network or manage automatic setup access.</p></div></div>
+      <div class="grid2">
+        <div class="panel">
+          <h3>Current connection</h3>
+          <div id="wifiStatus"></div>
+          <div class="actions"><button id="scanBtn">Scan networks</button><button id="disconnectBtn" class="danger">Disconnect Wi-Fi</button></div>
+          <div id="networks" class="networkList"></div>
+        </div>
+        <div class="panel">
+          <h3>Fallback hotspot</h3>
+          <label class="check"><input id="hotspotEnabled" type="checkbox"> Enable hotspot automatically when offline</label>
+          <label>SSID<input id="hotspotSsid"></label>
+          <label>Password<input id="hotspotPassword" type="password" autocomplete="new-password"></label>
+          <p class="help">WPA password must be at least 8 characters. Changing these values recreates the NetworkManager hotspot the next time it starts.</p>
+          <div class="actions"><button id="saveHotspotBtn">Save hotspot settings</button><button id="startHotspotBtn">Start hotspot</button><button id="stopHotspotBtn" class="secondary">Stop hotspot</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="serviceView" class="view hidden">
+      <div class="toolbar"><div><h2>Scoreboard service</h2><p class="muted">Control mlb-led-scoreboard.service without leaving the browser.</p></div></div>
+      <div class="panel">
+        <div id="serviceDetails"></div>
+        <div class="actions big">
+          <button data-service="start">Start</button>
+          <button data-service="restart" class="primary">Restart</button>
+          <button data-service="stop" class="danger">Stop</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modalCard">
+    <div class="toolbar"><h3 id="modalTitle">Backups</h3><button id="modalClose">Close</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
