@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.3
+# MLB LED Scoreboard Configurator — V2.1.4
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -223,3 +223,15 @@ The browser now waits for each selection request, displays a loading state,
 ignores stale out-of-order responses, disables caching for configuration API
 and static asset requests, and restores the previous selection if loading a
 file fails.
+
+
+## V2.1.4 color editor improvement
+
+RGB color values in `colors/teams.json` and `colors/scoreboard.json` are shown
+as visual GUI color controls. Click the large color swatch to open the browser's
+native color picker. The R, G, and B numeric fields remain available for exact
+values and stay synchronized with the picker. The hexadecimal and RGB values
+are displayed alongside the swatch.
+
+Colors are still written to the scoreboard JSON files in the original
+`[R, G, B]` array format.

@@ -31,14 +31,54 @@ function makeControl(value,path,schema){
   const wrap=document.createElement("div");wrap.className="fieldControl";
   const update=v=>{setPath(currentData,path,v); if(rawMode) $("#rawEditor").value=JSON.stringify(currentData,null,2)};
   if(isRgb(value)){
-    const box=document.createElement("div");box.className="rgb";
-    const picker=document.createElement("input");picker.type="color";
+    const box=document.createElement("div");box.className="rgbPicker";
+
+    const visual=document.createElement("div");visual.className="rgbVisual";
+    const picker=document.createElement("input");picker.type="color";picker.className="rgbSwatch";
+    picker.setAttribute("aria-label","Choose color");
+    picker.title="Click to choose a color";
     picker.value="#"+value.map(n=>n.toString(16).padStart(2,"0")).join("");
-    const nums=value.map((n,i)=>{const x=document.createElement("input");x.type="number";x.min=0;x.max=255;x.value=n;x.title=["Red","Green","Blue"][i];return x});
-    const label=document.createElement("span");label.className="muted";label.textContent=`rgb(${value.join(", ")})`;
-    const applyNums=()=>{const v=nums.map(x=>Math.max(0,Math.min(255,Number(x.value)||0)));picker.value="#"+v.map(n=>n.toString(16).padStart(2,"0")).join("");label.textContent=`rgb(${v.join(", ")})`;update(v)}
-    picker.oninput=()=>{const h=picker.value.slice(1);nums.forEach((x,i)=>x.value=parseInt(h.slice(i*2,i*2+2),16));applyNums()};
-    nums.forEach(x=>x.oninput=applyNums);box.append(picker,...nums,label);wrap.append(box);return wrap;
+
+    const hex=document.createElement("div");hex.className="rgbHex";
+    const rgbText=document.createElement("div");rgbText.className="rgbText muted";
+    visual.append(picker,hex,rgbText);
+
+    const channels=document.createElement("div");channels.className="rgbChannels";
+    const names=["R","G","B"];
+    const nums=value.map((n,i)=>{
+      const field=document.createElement("label");field.className="rgbChannel";
+      const caption=document.createElement("span");caption.textContent=names[i];
+      const x=document.createElement("input");x.type="number";x.min=0;x.max=255;x.step=1;x.value=n;
+      x.setAttribute("aria-label",`${names[i]} channel`);
+      field.append(caption,x);channels.append(field);return x
+    });
+
+    const normalized=()=>nums.map(x=>Math.max(0,Math.min(255,Math.round(Number(x.value)||0))));
+    const syncDisplay=v=>{
+      const h="#"+v.map(n=>n.toString(16).padStart(2,"0")).join("");
+      picker.value=h;
+      hex.textContent=h.toUpperCase();
+      rgbText.textContent=`RGB ${v[0]}, ${v[1]}, ${v[2]}`;
+    };
+    const applyNums=()=>{
+      const v=normalized();
+      nums.forEach((x,i)=>x.value=v[i]);
+      syncDisplay(v);
+      update(v);
+    };
+    picker.addEventListener("input",()=>{
+      const h=picker.value.slice(1);
+      const v=[0,1,2].map(i=>parseInt(h.slice(i*2,i*2+2),16));
+      nums.forEach((x,i)=>x.value=v[i]);
+      syncDisplay(v);
+      update(v);
+    });
+    nums.forEach(x=>x.addEventListener("input",applyNums));
+    syncDisplay(value);
+
+    box.append(visual,channels);
+    wrap.append(box);
+    return wrap;
   }
   if(typeof value==="boolean"){
     const x=document.createElement("input");x.type="checkbox";x.checked=value;x.onchange=()=>update(x.checked);wrap.append(x);return wrap;
