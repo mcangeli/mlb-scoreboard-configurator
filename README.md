@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.7
+# MLB LED Scoreboard Configurator — V2.1.8
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -265,3 +265,30 @@ syntax error prevented the Flask/Waitress configurator service from starting.
 The version badge remains visible in the web interface. A regression test now
 imports the web application and verifies that the rendered page contains the
 installed version number.
+
+
+## V2.1.8 visual editing improvements
+
+### True in-page color picker
+
+RGB values now use a two-dimensional saturation/brightness picker with a
+separate hue slider. Clicking or dragging anywhere in the color square updates
+the selected color immediately. The hue slider, live preview, hexadecimal
+display, and R/G/B numeric fields all stay synchronized.
+
+This implementation is fully rendered by the configurator itself and does not
+depend on Firefox, Chromium, or the Raspberry Pi desktop environment providing
+a native color chooser.
+
+### Add/remove configuration items
+
+Every object/configuration section now has an **Add item** button. You can enter
+a key and choose an initial value type: text, number, boolean, section/object,
+list/array, or RGB color.
+
+Arrays also have an **Add list item** button, and both object properties and
+array items can be removed directly from the form editor.
+
+Schema-defined missing properties are suggested by the browser where available.
+All additions/removals update the same JSON structure used by the raw editor and
+are still validated before saving.

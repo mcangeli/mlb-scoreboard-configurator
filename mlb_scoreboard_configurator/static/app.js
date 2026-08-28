@@ -27,13 +27,57 @@ function setPath(obj,path,value){let ref=obj;for(let i=0;i<path.length-1;i++)ref
 function isRgb(v){return Array.isArray(v)&&v.length===3&&v.every(n=>Number.isInteger(n)&&n>=0&&n<=255)}
 function schemaAt(schema,key){return schema?.properties?.[key]||null}
 
+function getPath(obj,path){
+  let ref=obj;
+  for(const part of path) ref=ref?.[part];
+  return ref;
+}
+function defaultForSchema(schema, fallbackType="string"){
+  if(schema?.default!==undefined) return structuredClone(schema.default);
+  if(schema?.const!==undefined) return structuredClone(schema.const);
+  if(Array.isArray(schema?.enum) && schema.enum.length) return structuredClone(schema.enum[0]);
+
+  const type=Array.isArray(schema?.type)?schema.type.find(t=>t!=="null"):schema?.type;
+  switch(type||fallbackType){
+    case "object": return {};
+    case "array":
+      if(schema?.minItems && schema?.items) return Array.from({length:schema.minItems},()=>defaultForSchema(schema.items));
+      return [];
+    case "number":
+    case "integer": return schema?.minimum ?? 0;
+    case "boolean": return false;
+    case "string": return "";
+    default: return "";
+  }
+}
+function inferNewValue(container,schema,requestedType){
+  if(requestedType==="rgb") return [255,255,255];
+  const map={string:"string",number:"number",boolean:"boolean",object:"object",array:"array"};
+  if(requestedType && map[requestedType]) return defaultForSchema(schema,map[requestedType]);
+  if(schema) return defaultForSchema(schema);
+
+  if(container && typeof container==="object" && !Array.isArray(container)){
+    const vals=Object.values(container);
+    if(vals.some(isRgb)) return [255,255,255];
+    const sample=vals.find(v=>v!==null && v!==undefined);
+    if(Array.isArray(sample)) return [];
+    if(typeof sample==="boolean") return false;
+    if(typeof sample==="number") return 0;
+    if(sample && typeof sample==="object") return {};
+  }
+  return "";
+}
+function syncRaw(){
+  $("#rawEditor").value=JSON.stringify(currentData,null,2);
+}
+
 function makeControl(value,path,schema){
   const wrap=document.createElement("div");wrap.className="fieldControl";
-  const update=v=>{setPath(currentData,path,v); if(rawMode) $("#rawEditor").value=JSON.stringify(currentData,null,2)};
+  const update=v=>{setPath(currentData,path,v); syncRaw()};
   if(isRgb(value)){
     const box=document.createElement("div");box.className="rgbPicker";
-
     const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+
     const rgbToHsv=([r,g,b])=>{
       r/=255;g/=255;b/=255;
       const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
@@ -43,7 +87,7 @@ function makeControl(value,path,schema){
         else if(max===g) h=60*(((b-r)/d)+2);
         else h=60*(((r-g)/d)+4);
       }
-      if(h<0)h+=360;
+      if(h<0) h+=360;
       return [h,max===0?0:d/max,max];
     };
     const hsvToRgb=([h,s,v])=>{
@@ -61,34 +105,27 @@ function makeControl(value,path,schema){
 
     let hsv=rgbToHsv(value);
 
-    const visual=document.createElement("div");visual.className="rgbVisual";
+    const preview=document.createElement("div");preview.className="rgbVisual";
     const swatch=document.createElement("div");swatch.className="rgbSwatchPreview";
-    swatch.setAttribute("aria-label","Selected color preview");
     const hex=document.createElement("div");hex.className="rgbHex";
     const rgbText=document.createElement("div");rgbText.className="rgbText muted";
-    visual.append(swatch,hex,rgbText);
+    preview.append(swatch,hex,rgbText);
 
-    const pickerPanel=document.createElement("div");pickerPanel.className="hsvPicker";
+    const svWrap=document.createElement("div");svWrap.className="svWrap";
+    const sv=document.createElement("div");sv.className="svPicker";sv.tabIndex=0;
+    sv.setAttribute("role","slider");
+    sv.setAttribute("aria-label","Saturation and brightness");
+    const svPointer=document.createElement("div");svPointer.className="svPointer";
+    sv.append(svPointer);
+    svWrap.append(sv);
 
-    const hueLabel=document.createElement("label");hueLabel.className="hsvRow";
+    const sliderPanel=document.createElement("div");sliderPanel.className="hsvPicker";
+    const hueRow=document.createElement("label");hueRow.className="hsvRow";
     const hueTitle=document.createElement("span");hueTitle.textContent="Hue";
     const hue=document.createElement("input");hue.type="range";hue.min=0;hue.max=359;hue.step=1;hue.className="hueSlider";
     const hueVal=document.createElement("span");hueVal.className="sliderValue";
-    hueLabel.append(hueTitle,hue,hueVal);
-
-    const satLabel=document.createElement("label");satLabel.className="hsvRow";
-    const satTitle=document.createElement("span");satTitle.textContent="Saturation";
-    const sat=document.createElement("input");sat.type="range";sat.min=0;sat.max=100;sat.step=1;sat.className="satSlider";
-    const satVal=document.createElement("span");satVal.className="sliderValue";
-    satLabel.append(satTitle,sat,satVal);
-
-    const valLabel=document.createElement("label");valLabel.className="hsvRow";
-    const valTitle=document.createElement("span");valTitle.textContent="Brightness";
-    const val=document.createElement("input");val.type="range";val.min=0;val.max=100;val.step=1;val.className="valSlider";
-    const valVal=document.createElement("span");valVal.className="sliderValue";
-    valLabel.append(valTitle,val,valVal);
-
-    pickerPanel.append(hueLabel,satLabel,valLabel);
+    hueRow.append(hueTitle,hue,hueVal);
+    sliderPanel.append(hueRow);
 
     const channels=document.createElement("div");channels.className="rgbChannels";
     const names=["R","G","B"];
@@ -97,48 +134,71 @@ function makeControl(value,path,schema){
       const caption=document.createElement("span");caption.textContent=names[i];
       const x=document.createElement("input");x.type="number";x.min=0;x.max=255;x.step=1;x.value=n;
       x.setAttribute("aria-label",`${names[i]} channel`);
-      field.append(caption,x);channels.append(field);return x
+      field.append(caption,x);channels.append(field);return x;
     });
 
     const syncAll=(rgb,fromHsv=false)=>{
       if(!fromHsv) hsv=rgbToHsv(rgb);
       const hexValue="#"+rgb.map(n=>n.toString(16).padStart(2,"0")).join("");
+      const pureHue=hsvToRgb([hsv[0],1,1]);
+      const pureHueCss=`rgb(${pureHue.join(",")})`;
       swatch.style.backgroundColor=hexValue;
       hex.textContent=hexValue.toUpperCase();
       rgbText.textContent=`RGB ${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
       nums.forEach((x,i)=>x.value=rgb[i]);
-
       hue.value=Math.round(hsv[0]);
-      sat.value=Math.round(hsv[1]*100);
-      val.value=Math.round(hsv[2]*100);
       hueVal.textContent=`${Math.round(hsv[0])}°`;
-      satVal.textContent=`${Math.round(hsv[1]*100)}%`;
-      valVal.textContent=`${Math.round(hsv[2]*100)}%`;
-
-      const hueRgb=hsvToRgb([hsv[0],1,1]);
-      const hueHex="#"+hueRgb.map(n=>n.toString(16).padStart(2,"0")).join("");
-      sat.style.background=`linear-gradient(to right, rgb(${Math.round(hsv[2]*255)},${Math.round(hsv[2]*255)},${Math.round(hsv[2]*255)}), ${hueHex})`;
-      val.style.background=`linear-gradient(to right, #000000, ${hueHex})`;
+      sv.style.setProperty("--picker-hue",pureHueCss);
+      svPointer.style.left=`${hsv[1]*100}%`;
+      svPointer.style.top=`${(1-hsv[2])*100}%`;
+      sv.setAttribute("aria-valuetext",`Saturation ${Math.round(hsv[1]*100)}%, brightness ${Math.round(hsv[2]*100)}%`);
     };
 
-    const applyHsv=()=>{
-      hsv=[Number(hue.value),Number(sat.value)/100,Number(val.value)/100];
+    const commitHsv=()=>{
       const rgb=hsvToRgb(hsv);
       syncAll(rgb,true);
       update(rgb);
+      syncRaw();
     };
 
-    const applyRgb=()=>{
-      const rgb=nums.map(x=>clamp(Math.round(Number(x.value)||0),0,255));
+    const setSvFromPointer=e=>{
+      const rect=sv.getBoundingClientRect();
+      if(!rect.width||!rect.height) return;
+      const x=clamp((e.clientX-rect.left)/rect.width,0,1);
+      const y=clamp((e.clientY-rect.top)/rect.height,0,1);
+      hsv=[hsv[0],x,1-y];
+      commitHsv();
+    };
+    sv.addEventListener("pointerdown",e=>{
+      sv.setPointerCapture?.(e.pointerId);
+      setSvFromPointer(e);
+    });
+    sv.addEventListener("pointermove",e=>{
+      if(e.buttons===1) setSvFromPointer(e);
+    });
+    sv.addEventListener("keydown",e=>{
+      const step=e.shiftKey?.05:.01;
+      let changed=true;
+      if(e.key==="ArrowLeft") hsv[1]=clamp(hsv[1]-step,0,1);
+      else if(e.key==="ArrowRight") hsv[1]=clamp(hsv[1]+step,0,1);
+      else if(e.key==="ArrowUp") hsv[2]=clamp(hsv[2]+step,0,1);
+      else if(e.key==="ArrowDown") hsv[2]=clamp(hsv[2]-step,0,1);
+      else changed=false;
+      if(changed){e.preventDefault();commitHsv()}
+    });
+    hue.addEventListener("input",()=>{
+      hsv=[Number(hue.value),hsv[1],hsv[2]];
+      commitHsv();
+    });
+    nums.forEach(x=>x.addEventListener("input",()=>{
+      const rgb=nums.map(n=>clamp(Math.round(Number(n.value)||0),0,255));
       syncAll(rgb,false);
       update(rgb);
-    };
-
-    [hue,sat,val].forEach(x=>x.addEventListener("input",applyHsv));
-    nums.forEach(x=>x.addEventListener("input",applyRgb));
+      syncRaw();
+    }));
 
     syncAll(value,false);
-    box.append(visual,pickerPanel,channels);
+    box.append(preview,svWrap,sliderPanel,channels);
     wrap.append(box);
     return wrap;
   }
@@ -162,26 +222,141 @@ function makeControl(value,path,schema){
   wrap.append(x);return wrap;
 }
 
+function makeAddItemPanel(container,schema,path,onDone){
+  const panel=document.createElement("div");panel.className="addItemPanel";
+  const isArray=Array.isArray(container);
+
+  const keyInput=document.createElement("input");
+  keyInput.type=isArray?"number":"text";
+  keyInput.placeholder=isArray?"Index (optional)":"New key";
+  if(isArray){keyInput.min=0;keyInput.max=container.length;keyInput.value=container.length}
+
+  const missingProps=(!isArray && schema?.properties)
+    ? Object.keys(schema.properties).filter(k=>!(k in container))
+    : [];
+  if(missingProps.length){
+    const list=document.createElement("datalist");
+    list.id="missing-"+Math.random().toString(36).slice(2);
+    missingProps.forEach(k=>{
+      const o=document.createElement("option");o.value=k;o.label=schema.properties[k]?.title||k;list.append(o);
+    });
+    keyInput.setAttribute("list",list.id);
+    panel.append(list);
+  }
+
+  const type=document.createElement("select");
+  [["string","Text"],["number","Number"],["boolean","Boolean"],["object","Section / object"],["array","List / array"],["rgb","RGB color"]]
+    .forEach(([v,label])=>{const o=document.createElement("option");o.value=v;o.textContent=label;type.append(o)});
+
+  const add=document.createElement("button");add.type="button";add.className="primary";add.textContent="Add";
+  const cancel=document.createElement("button");cancel.type="button";cancel.className="secondary";cancel.textContent="Cancel";
+
+  add.addEventListener("click",()=>{
+    if(isArray){
+      const index=clampIndex(Number(keyInput.value),container.length);
+      const itemSchema=schema?.items||null;
+      container.splice(index,0,inferNewValue(container,itemSchema,type.value));
+    }else{
+      const key=keyInput.value.trim();
+      if(!key) return toast("Enter a key name.",true);
+      if(Object.prototype.hasOwnProperty.call(container,key)) return toast(`"${key}" already exists.`,true);
+      const itemSchema=schemaAt(schema,key) || schema?.additionalProperties || null;
+      container[key]=inferNewValue(container,itemSchema,type.value);
+    }
+    syncRaw();
+    renderForm();
+    onDone?.();
+  });
+  cancel.addEventListener("click",()=>panel.remove());
+
+  panel.append(keyInput,type,add,cancel);
+  return panel;
+}
+function clampIndex(n,length){
+  if(!Number.isFinite(n)) return length;
+  return Math.max(0,Math.min(length,Math.round(n)));
+}
+function addSectionFooter(container,schema,parent,path){
+  const footer=document.createElement("div");footer.className="sectionFooter";
+  const btn=document.createElement("button");btn.type="button";btn.className="secondary addItemBtn";
+  btn.textContent=Array.isArray(container)?"＋ Add list item":"＋ Add item";
+  btn.addEventListener("click",()=>{
+    const existing=footer.querySelector(".addItemPanel");
+    if(existing){existing.remove();return}
+    footer.append(makeAddItemPanel(container,schema,path));
+    const first=footer.querySelector(".addItemPanel input");
+    first?.focus();
+  });
+  footer.append(btn);
+  parent.append(footer);
+}
+function renderArray(arr,schema,parent,path){
+  if(isRgb(arr)){parent.append(makeControl(arr,path,schema));return}
+  arr.forEach((value,index)=>{
+    const itemSchema=schema?.items||null;
+    if(value && typeof value==="object" && !isRgb(value)){
+      const g=document.createElement("div");g.className="group";
+      const h=document.createElement("div");h.className="groupHeaderRow";
+      const title=document.createElement("div");title.className="groupHeader";title.textContent=`Item ${index+1}`;
+      const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
+      remove.onclick=()=>{arr.splice(index,1);syncRaw();renderForm()};
+      h.append(title,remove);g.append(h);
+      if(Array.isArray(value)) renderArray(value,itemSchema,g,[...path,index]);
+      else renderObject(value,itemSchema,g,[...path,index]);
+      parent.append(g);
+    }else{
+      const row=document.createElement("div");row.className="field";
+      const info=document.createElement("div");
+      const name=document.createElement("div");name.className="fieldName";name.textContent=`Item ${index+1}`;info.append(name);
+      const controls=document.createElement("div");controls.className="inlineControls";
+      controls.append(makeControl(value,[...path,index],itemSchema));
+      const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
+      remove.onclick=()=>{arr.splice(index,1);syncRaw();renderForm()};
+      controls.append(remove);row.append(info,controls);parent.append(row);
+    }
+  });
+  addSectionFooter(arr,schema,parent,path);
+}
 function renderObject(obj,schema,parent,path=[]){
   Object.entries(obj).forEach(([key,value])=>{
     if(key==="$schema") return;
     const s=schemaAt(schema,key);
-    if(value && typeof value==="object" && !Array.isArray(value) && !isRgb(value)){
+    if(value && typeof value==="object" && !isRgb(value)){
       const g=document.createElement("div");g.className="group";
-      const h=document.createElement("div");h.className="groupHeader";h.textContent=s?.title||key;g.append(h);
+      const h=document.createElement("div");h.className="groupHeaderRow";
+      const title=document.createElement("div");title.className="groupHeader";title.textContent=s?.title||key;
+      const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
+      remove.onclick=()=>{
+        if(!confirm(`Remove "${key}" from this configuration?`)) return;
+        delete obj[key];syncRaw();renderForm();
+      };
+      h.append(title,remove);g.append(h);
       if(s?.description){const d=document.createElement("div");d.className="desc";d.textContent=s.description;g.append(d)}
-      renderObject(value,s,g,[...path,key]);parent.append(g);return;
+      if(Array.isArray(value)) renderArray(value,s,g,[...path,key]);
+      else renderObject(value,s,g,[...path,key]);
+      parent.append(g);return;
     }
+
     const row=document.createElement("div");row.className="field";
     const info=document.createElement("div");
     const name=document.createElement("div");name.className="fieldName";name.textContent=s?.title||key;info.append(name);
     if(s?.description){const d=document.createElement("div");d.className="desc";d.textContent=s.description;info.append(d)}
-    row.append(info,makeControl(value,[...path,key],s));parent.append(row);
+
+    const controls=document.createElement("div");controls.className="inlineControls";
+    controls.append(makeControl(value,[...path,key],s));
+    const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
+    remove.onclick=()=>{
+      if(!confirm(`Remove "${key}" from this configuration?`)) return;
+      delete obj[key];syncRaw();renderForm();
+    };
+    controls.append(remove);
+    row.append(info,controls);parent.append(row);
   });
+  addSectionFooter(obj,schema,parent,path);
 }
 function renderForm(){
   const host=$("#formEditor");host.innerHTML="";
-  if(Array.isArray(currentData)){host.append(makeControl(currentData,[],currentSchema));return}
+  if(Array.isArray(currentData)){renderArray(currentData,currentSchema,host,[]);return}
   renderObject(currentData,currentSchema,host,[]);
 }
 function showValidation(errors){
