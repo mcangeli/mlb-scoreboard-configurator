@@ -5,8 +5,8 @@ from flask import Flask, Response, jsonify, render_template, request
 from waitress import serve
 from . import network, service
 from .settings import load_settings, save_settings, web_username, web_password
-from .storage import (
 from . import __version__
+from .storage import (
     named_path, read_json, write_json, coordinate_files, config_schema,
     validate, list_backups, restore_backup
 )

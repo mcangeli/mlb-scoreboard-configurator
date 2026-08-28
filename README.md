@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.6
+# MLB LED Scoreboard Configurator — V2.1.7
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -254,3 +254,14 @@ The saved JSON format remains `[R, G, B]`.
 The configurator web interface now displays the installed package version in
 the page header (for example, `v2.1.6`). This makes it easy to confirm that a
 Git/pip upgrade has actually reached the Raspberry Pi and the running web UI.
+
+
+## V2.1.7 startup fix
+
+Fixed a V2.1.6 packaging regression where the version import was accidentally
+inserted inside the multi-line `storage` import statement in `web.py`. That
+syntax error prevented the Flask/Waitress configurator service from starting.
+
+The version badge remains visible in the web interface. A regression test now
+imports the web application and verifies that the rendered page contains the
+installed version number.
