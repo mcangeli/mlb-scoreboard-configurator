@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.2
+# MLB LED Scoreboard Configurator — V2.1.3
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -211,3 +211,15 @@ sudo venv/bin/mlb-scoreboard-configurator-setup \
 The installation section now shows the configurator URL, default username and
 password, the location of the credentials file, and the commands needed to
 change credentials and restart the service.
+
+
+## V2.1.3 editor file-switching fix
+
+Fixed the configuration-file selector so choosing `config.json`,
+`colors/teams.json`, `colors/scoreboard.json`, or a coordinates file reliably
+reloads the structured editor and raw JSON editor.
+
+The browser now waits for each selection request, displays a loading state,
+ignores stale out-of-order responses, disables caching for configuration API
+and static asset requests, and restores the previous selection if loading a
+file fails.

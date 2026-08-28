@@ -1,6 +1,7 @@
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 let bootstrap = null, currentFile = "config", currentData = {}, currentSchema = null, rawMode = false;
+let fileLoadSequence = 0;
 
 const descriptions = {
   config: "Main scoreboard behavior, rotation, matrix, weather, standings and plugin options.",
@@ -12,7 +13,12 @@ const descriptions = {
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function toast(msg,bad=false){const t=$("#toast");t.textContent=msg;t.className="toast"+(bad?" error":"");setTimeout(()=>t.classList.add("hidden"),3500)}
 async function api(url, options={}) {
-  const r=await fetch(url,{headers:{"Content-Type":"application/json",...(options.headers||{})},...options});
+  const fetchOptions={
+    cache:"no-store",
+    headers:{"Content-Type":"application/json",...(options.headers||{})},
+    ...options
+  };
+  const r=await fetch(url,fetchOptions);
   const data=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(data.error||data.message||(data.errors?.[0]?.message)||`HTTP ${r.status}`);
   return data;
@@ -82,11 +88,37 @@ function showValidation(errors){
   b.innerHTML="<strong>Validation errors:</strong><ul>"+errors.map(e=>`<li><code>${esc(e.path)}</code>: ${esc(e.message)}</li>`).join("")+"</ul>";
 }
 async function loadFile(id){
-  currentFile=id;const meta=bootstrap.files.find(f=>f.id===id);$("#fileTitle").textContent=meta?.label||id;
-  $("#fileSubtitle").textContent=descriptions[meta?.kind]||"JSON configuration.";
-  $("#fileHelp").textContent=descriptions[meta?.kind]||"";
-  const x=await api("/api/file/"+encodeURI(id));currentData=x.data;currentSchema=x.schema||null;
-  $("#rawEditor").value=JSON.stringify(currentData,null,2);renderForm();showValidation(x.validation||[]);
+  const seq=++fileLoadSequence;
+  const meta=bootstrap.files.find(f=>f.id===id);
+  if(!meta) throw new Error(`Unknown configuration file: ${id}`);
+
+  const fs=$("#fileSelect");
+  fs.value=id;
+  fs.disabled=true;
+
+  $("#fileTitle").textContent=meta.label||id;
+  $("#fileSubtitle").textContent="Loading…";
+  $("#fileHelp").textContent=descriptions[meta.kind]||"";
+  $("#formEditor").innerHTML='<p class="muted">Loading configuration…</p>';
+  $("#validationBox").classList.add("hidden");
+
+  try{
+    const url="/api/file/"+id.split("/").map(encodeURIComponent).join("/")+"?ts="+Date.now();
+    const x=await api(url);
+
+    // Ignore an older request if the user changed files again before it finished.
+    if(seq!==fileLoadSequence) return;
+
+    currentFile=id;
+    currentData=x.data;
+    currentSchema=x.schema||null;
+    $("#fileSubtitle").textContent=descriptions[meta.kind]||"JSON configuration.";
+    $("#rawEditor").value=JSON.stringify(currentData,null,2);
+    renderForm();
+    showValidation(x.validation||[]);
+  } finally {
+    if(seq===fileLoadSequence) fs.disabled=false;
+  }
 }
 async function save(){
   try{
@@ -132,9 +164,25 @@ function renderService(st){
 async function refreshService(){renderService(await api("/api/service/status"))}
 function switchView(name){$$(".view").forEach(v=>v.classList.add("hidden"));$("#"+name+"View").classList.remove("hidden");$$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===name));if(name==="wifi")refreshWifi();if(name==="service")refreshService()}
 async function init(){
-  bootstrap=await api("/api/bootstrap");const fs=$("#fileSelect");fs.innerHTML=bootstrap.files.map(f=>`<option value="${esc(f.id)}">${esc(f.label)}</option>`).join("");
-  fs.onchange=()=>loadFile(fs.value);renderWifi(bootstrap.wifi);renderService(bootstrap.service);
-  const s=bootstrap.settings;$("#hotspotEnabled").checked=!!s.hotspot_enabled;$("#hotspotSsid").value=s.hotspot_ssid;$("#hotspotPassword").value=s.hotspot_password;
+  bootstrap=await api("/api/bootstrap?ts="+Date.now());
+  const fs=$("#fileSelect");
+  fs.innerHTML=bootstrap.files.map(f=>`<option value="${esc(f.id)}">${esc(f.label)}</option>`).join("");
+  fs.addEventListener("change",async()=>{
+    try{
+      await loadFile(fs.value);
+    }catch(e){
+      toast(e.message,true);
+      fs.disabled=false;
+      fs.value=currentFile;
+      await loadFile(currentFile).catch(()=>{});
+    }
+  });
+  renderWifi(bootstrap.wifi);
+  renderService(bootstrap.service);
+  const s=bootstrap.settings;
+  $("#hotspotEnabled").checked=!!s.hotspot_enabled;
+  $("#hotspotSsid").value=s.hotspot_ssid;
+  $("#hotspotPassword").value=s.hotspot_password;
   await loadFile("config");
 }
 $$(".nav").forEach(b=>b.onclick=()=>switchView(b.dataset.view));
