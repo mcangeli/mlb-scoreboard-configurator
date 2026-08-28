@@ -6,6 +6,7 @@ from waitress import serve
 from . import network, service
 from .settings import load_settings, save_settings, web_username, web_password
 from .storage import (
+from . import __version__
     named_path, read_json, write_json, coordinate_files, config_schema,
     validate, list_backups, restore_backup
 )
@@ -58,7 +59,7 @@ def health():
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", configurator_version=__version__)
 
 @app.get("/api/bootstrap")
 def bootstrap():

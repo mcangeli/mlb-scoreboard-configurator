@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.4
+# MLB LED Scoreboard Configurator — V2.1.6
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -235,3 +235,22 @@ are displayed alongside the swatch.
 
 Colors are still written to the scoreboard JSON files in the original
 `[R, G, B]` array format.
+
+
+## V2.1.5 built-in color picker
+
+Replaced the browser-dependent native color input with an in-page HSV color
+picker. Every RGB color now has Hue, Saturation, and Brightness sliders plus
+the existing R/G/B numeric fields and live color preview.
+
+This works without relying on the operating system's color dialog and is
+therefore consistent on Raspberry Pi browsers such as Firefox/Chromium.
+
+The saved JSON format remains `[R, G, B]`.
+
+
+## V2.1.6 visible version number
+
+The configurator web interface now displays the installed package version in
+the page header (for example, `v2.1.6`). This makes it easy to confirm that a
+Git/pip upgrade has actually reached the Raspberry Pi and the running web UI.

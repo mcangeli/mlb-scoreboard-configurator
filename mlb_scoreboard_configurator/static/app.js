@@ -33,15 +33,62 @@ function makeControl(value,path,schema){
   if(isRgb(value)){
     const box=document.createElement("div");box.className="rgbPicker";
 
-    const visual=document.createElement("div");visual.className="rgbVisual";
-    const picker=document.createElement("input");picker.type="color";picker.className="rgbSwatch";
-    picker.setAttribute("aria-label","Choose color");
-    picker.title="Click to choose a color";
-    picker.value="#"+value.map(n=>n.toString(16).padStart(2,"0")).join("");
+    const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+    const rgbToHsv=([r,g,b])=>{
+      r/=255;g/=255;b/=255;
+      const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+      let h=0;
+      if(d){
+        if(max===r) h=60*(((g-b)/d)%6);
+        else if(max===g) h=60*(((b-r)/d)+2);
+        else h=60*(((r-g)/d)+4);
+      }
+      if(h<0)h+=360;
+      return [h,max===0?0:d/max,max];
+    };
+    const hsvToRgb=([h,s,v])=>{
+      h=((h%360)+360)%360;s=clamp(s,0,1);v=clamp(v,0,1);
+      const c=v*s,x=c*(1-Math.abs((h/60)%2-1)),m=v-c;
+      let rp=0,gp=0,bp=0;
+      if(h<60){rp=c;gp=x}
+      else if(h<120){rp=x;gp=c}
+      else if(h<180){gp=c;bp=x}
+      else if(h<240){gp=x;bp=c}
+      else if(h<300){rp=x;bp=c}
+      else{rp=c;bp=x}
+      return [Math.round((rp+m)*255),Math.round((gp+m)*255),Math.round((bp+m)*255)];
+    };
 
+    let hsv=rgbToHsv(value);
+
+    const visual=document.createElement("div");visual.className="rgbVisual";
+    const swatch=document.createElement("div");swatch.className="rgbSwatchPreview";
+    swatch.setAttribute("aria-label","Selected color preview");
     const hex=document.createElement("div");hex.className="rgbHex";
     const rgbText=document.createElement("div");rgbText.className="rgbText muted";
-    visual.append(picker,hex,rgbText);
+    visual.append(swatch,hex,rgbText);
+
+    const pickerPanel=document.createElement("div");pickerPanel.className="hsvPicker";
+
+    const hueLabel=document.createElement("label");hueLabel.className="hsvRow";
+    const hueTitle=document.createElement("span");hueTitle.textContent="Hue";
+    const hue=document.createElement("input");hue.type="range";hue.min=0;hue.max=359;hue.step=1;hue.className="hueSlider";
+    const hueVal=document.createElement("span");hueVal.className="sliderValue";
+    hueLabel.append(hueTitle,hue,hueVal);
+
+    const satLabel=document.createElement("label");satLabel.className="hsvRow";
+    const satTitle=document.createElement("span");satTitle.textContent="Saturation";
+    const sat=document.createElement("input");sat.type="range";sat.min=0;sat.max=100;sat.step=1;sat.className="satSlider";
+    const satVal=document.createElement("span");satVal.className="sliderValue";
+    satLabel.append(satTitle,sat,satVal);
+
+    const valLabel=document.createElement("label");valLabel.className="hsvRow";
+    const valTitle=document.createElement("span");valTitle.textContent="Brightness";
+    const val=document.createElement("input");val.type="range";val.min=0;val.max=100;val.step=1;val.className="valSlider";
+    const valVal=document.createElement("span");valVal.className="sliderValue";
+    valLabel.append(valTitle,val,valVal);
+
+    pickerPanel.append(hueLabel,satLabel,valLabel);
 
     const channels=document.createElement("div");channels.className="rgbChannels";
     const names=["R","G","B"];
@@ -53,30 +100,45 @@ function makeControl(value,path,schema){
       field.append(caption,x);channels.append(field);return x
     });
 
-    const normalized=()=>nums.map(x=>Math.max(0,Math.min(255,Math.round(Number(x.value)||0))));
-    const syncDisplay=v=>{
-      const h="#"+v.map(n=>n.toString(16).padStart(2,"0")).join("");
-      picker.value=h;
-      hex.textContent=h.toUpperCase();
-      rgbText.textContent=`RGB ${v[0]}, ${v[1]}, ${v[2]}`;
-    };
-    const applyNums=()=>{
-      const v=normalized();
-      nums.forEach((x,i)=>x.value=v[i]);
-      syncDisplay(v);
-      update(v);
-    };
-    picker.addEventListener("input",()=>{
-      const h=picker.value.slice(1);
-      const v=[0,1,2].map(i=>parseInt(h.slice(i*2,i*2+2),16));
-      nums.forEach((x,i)=>x.value=v[i]);
-      syncDisplay(v);
-      update(v);
-    });
-    nums.forEach(x=>x.addEventListener("input",applyNums));
-    syncDisplay(value);
+    const syncAll=(rgb,fromHsv=false)=>{
+      if(!fromHsv) hsv=rgbToHsv(rgb);
+      const hexValue="#"+rgb.map(n=>n.toString(16).padStart(2,"0")).join("");
+      swatch.style.backgroundColor=hexValue;
+      hex.textContent=hexValue.toUpperCase();
+      rgbText.textContent=`RGB ${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
+      nums.forEach((x,i)=>x.value=rgb[i]);
 
-    box.append(visual,channels);
+      hue.value=Math.round(hsv[0]);
+      sat.value=Math.round(hsv[1]*100);
+      val.value=Math.round(hsv[2]*100);
+      hueVal.textContent=`${Math.round(hsv[0])}°`;
+      satVal.textContent=`${Math.round(hsv[1]*100)}%`;
+      valVal.textContent=`${Math.round(hsv[2]*100)}%`;
+
+      const hueRgb=hsvToRgb([hsv[0],1,1]);
+      const hueHex="#"+hueRgb.map(n=>n.toString(16).padStart(2,"0")).join("");
+      sat.style.background=`linear-gradient(to right, rgb(${Math.round(hsv[2]*255)},${Math.round(hsv[2]*255)},${Math.round(hsv[2]*255)}), ${hueHex})`;
+      val.style.background=`linear-gradient(to right, #000000, ${hueHex})`;
+    };
+
+    const applyHsv=()=>{
+      hsv=[Number(hue.value),Number(sat.value)/100,Number(val.value)/100];
+      const rgb=hsvToRgb(hsv);
+      syncAll(rgb,true);
+      update(rgb);
+    };
+
+    const applyRgb=()=>{
+      const rgb=nums.map(x=>clamp(Math.round(Number(x.value)||0),0,255));
+      syncAll(rgb,false);
+      update(rgb);
+    };
+
+    [hue,sat,val].forEach(x=>x.addEventListener("input",applyHsv));
+    nums.forEach(x=>x.addEventListener("input",applyRgb));
+
+    syncAll(value,false);
+    box.append(visual,pickerPanel,channels);
     wrap.append(box);
     return wrap;
   }
