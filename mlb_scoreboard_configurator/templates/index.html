@@ -25,9 +25,15 @@
     <div class="small muted">Configuration file</div>
     <select id="fileSelect"></select>
     <div id="fileHelp" class="help"></div>
-  </aside>
+  
+      <div class="sideSection">
+        <div class="sideTitle">System</div>
+        <button id="systemSettingsNav" class="nav sideNavButton" data-view="system" type="button">Pi / Configurator Settings</button>
+      </div>
+</aside>
 
   <main>
+      <div id="editorPage">
     <div id="toast" class="toast hidden"></div>
 
     <section id="editorView" class="view">
@@ -79,7 +85,55 @@
         </div>
       </div>
     </section>
-  </main>
+  
+            </div>
+<section id="systemSettingsPage" class="systemPage hidden">
+        <div class="pageHeader">
+          <div>
+            <h2>Pi / Configurator Settings</h2>
+            <p class="muted">Change Raspberry Pi identity and configurator login settings.</p>
+          </div>
+        </div>
+
+        <div class="settingsCard">
+          <h3>Raspberry Pi hostname</h3>
+          <p class="muted">This changes the system hostname. A reboot is not normally required, but some network clients may cache the old name.</p>
+          <label class="settingsField">
+            <span>Hostname</span>
+            <input id="piHostname" type="text" maxlength="63" autocomplete="off">
+          </label>
+          <div class="settingsActions">
+            <button id="saveHostname" class="primary" type="button">Save hostname</button>
+          </div>
+        </div>
+
+        <div class="settingsCard">
+          <h3>Configurator authentication</h3>
+          <p class="muted">Changing these credentials updates <code>/etc/mlb-scoreboard-configurator.env</code>. You will need to sign in again after the configurator restarts.</p>
+          <label class="settingsField">
+            <span>Username</span>
+            <input id="configAuthUsername" type="text" autocomplete="username">
+          </label>
+          <label class="settingsField">
+            <span>New password</span>
+            <input id="configAuthPassword" type="password" autocomplete="new-password">
+          </label>
+          <label class="settingsField">
+            <span>Confirm password</span>
+            <input id="configAuthPasswordConfirm" type="password" autocomplete="new-password">
+          </label>
+          <div class="settingsActions">
+            <button id="saveConfiguratorAuth" class="primary" type="button">Save login credentials</button>
+          </div>
+          <div id="authRestartNotice" class="notice hidden">
+            Credentials saved. Restart the configurator service to activate them. Your browser will then ask you to sign in with the new credentials.
+            <div class="settingsActions">
+              <button id="restartConfiguratorAfterAuth" class="danger" type="button">Restart configurator now</button>
+            </div>
+          </div>
+        </div>
+      </section>
+</main>
 </div>
 
 <div id="modal" class="modal hidden">

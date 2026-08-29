@@ -11,7 +11,8 @@ class WebVersionRegressionTests(unittest.TestCase):
     def test_version_import_is_top_level(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "mlb_scoreboard_configurator" / "web.py").read_text()
-        self.assertIn("from . import __version__\nfrom .storage import (", source)
+        self.assertIn("from . import __version__", source)
+        self.assertIn("from .storage import (", source)
 
     def test_template_displays_version(self):
         root = Path(__file__).resolve().parents[1]

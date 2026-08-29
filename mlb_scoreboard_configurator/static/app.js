@@ -485,13 +485,34 @@ function renderService(st){
   $("#serviceDetails").innerHTML=`<p><b>Active state:</b> ${esc(st.active_state)}</p><p><b>Sub-state:</b> ${esc(st.sub_state)}</p><p><b>Enabled:</b> ${esc(st.unit_file_state)}</p>`;
 }
 async function refreshService(){renderService(await api("/api/service/status"))}
-function switchView(name){$$(".view").forEach(v=>v.classList.add("hidden"));$("#"+name+"View").classList.remove("hidden");$$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===name));if(name==="wifi")refreshWifi();if(name==="service")refreshService()}
+function switchView(name){
+  const editorPage=$("#editorPage");
+  const systemPage=$("#systemSettingsPage");
+
+  $$(".view").forEach(v=>v.classList.add("hidden"));
+  systemPage?.classList.add("hidden");
+
+  if(name==="system"){
+    editorPage?.classList.add("hidden");
+    systemPage?.classList.remove("hidden");
+    loadSystemSettings().catch(e=>toast(e.message||String(e),true));
+  }else{
+    editorPage?.classList.remove("hidden");
+    const target=$("#"+name+"View");
+    if(target) target.classList.remove("hidden");
+    if(name==="wifi") refreshWifi();
+    if(name==="service") refreshService();
+  }
+
+  $$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===name));
+}
 async function init(){
   bootstrap=await api("/api/bootstrap?ts="+Date.now());
   const fs=$("#fileSelect");
   fs.innerHTML=bootstrap.files.map(f=>`<option value="${esc(f.id)}">${esc(f.label)}</option>`).join("");
   fs.addEventListener("change",async()=>{
     try{
+      switchView("editor");
       await loadFile(fs.value);
     }catch(e){
       toast(e.message,true);
@@ -516,3 +537,57 @@ $("#startHotspotBtn").onclick=async()=>{try{const x=await api("/api/wifi/hotspot
 $("#stopHotspotBtn").onclick=async()=>{try{const x=await api("/api/wifi/hotspot/stop",{method:"POST"});renderWifi(x.status);toast(x.message)}catch(e){toast(e.message,true)}};
 $$("[data-service]").forEach(b=>b.onclick=async()=>{const a=b.dataset.service;if((a==="stop"||a==="restart")&&!confirm(`${a[0].toUpperCase()+a.slice(1)} mlb-led-scoreboard.service?`))return;try{const x=await api("/api/service/"+a,{method:"POST"});renderService(x.status);toast(`Scoreboard service ${a} command completed.`)}catch(e){toast(e.message,true)}})
 init().catch(e=>toast(e.message,true));
+
+
+async function loadSystemSettings(){
+  const r=await api("/api/system/settings");
+  $("#piHostname").value=r.hostname||"";
+  $("#configAuthUsername").value=r.username||"";
+  $("#configAuthPassword").value="";
+  $("#configAuthPasswordConfirm").value="";
+  $("#authRestartNotice").classList.add("hidden");
+}
+
+$("#saveHostname")?.addEventListener("click",async()=>{
+  const hostname=$("#piHostname").value.trim();
+  try{
+    const r=await api("/api/system/hostname",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({hostname})
+    });
+    $("#piHostname").value=r.hostname||hostname;
+    toast("Hostname updated.");
+  }catch(e){toast(e.message||String(e),true)}
+});
+
+$("#saveConfiguratorAuth")?.addEventListener("click",async()=>{
+  const username=$("#configAuthUsername").value.trim();
+  const password=$("#configAuthPassword").value;
+  const confirm_password=$("#configAuthPasswordConfirm").value;
+  if(!username) return toast("Username cannot be empty.",true);
+  if(!password) return toast("Enter a new password.",true);
+  if(password!==confirm_password) return toast("Passwords do not match.",true);
+  try{
+    await api("/api/system/auth",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username,password,confirm_password})
+    });
+    $("#authRestartNotice").classList.remove("hidden");
+    toast("Credentials saved. Restart required.");
+  }catch(e){toast(e.message||String(e),true)}
+});
+
+$("#restartConfiguratorAfterAuth")?.addEventListener("click",async()=>{
+  const btn=$("#restartConfiguratorAfterAuth");
+  btn.disabled=true;
+  try{
+    fetch("/api/system/restart-configurator",{method:"POST",cache:"no-store",credentials:"same-origin"});
+    toast("Configurator is restarting. Reconnect using the new login.");
+    setTimeout(()=>window.location.reload(),1800);
+  }catch(e){
+    btn.disabled=false;
+    toast(e.message||String(e),true);
+  }
+});

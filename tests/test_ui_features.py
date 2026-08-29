@@ -41,5 +41,29 @@ class UiFeatureTests(unittest.TestCase):
         self.assertNotIn('value.map(', block)
         self.assertIn('const initialRgb=rgbArray(value);', block)
 
+
+    def test_system_settings_page_present(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="systemSettingsPage"', template)
+        self.assertIn('id="piHostname"', template)
+        self.assertIn('id="configAuthUsername"', template)
+        self.assertIn('id="configAuthPassword"', template)
+        self.assertIn('/api/system/auth', self.js)
+        self.assertIn('/api/system/hostname', self.js)
+
+
+    def test_system_page_uses_same_navigation_model(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="systemSettingsNav" class="nav sideNavButton" data-view="system"', template)
+        self.assertIn('const editorPage=$("#editorPage");', self.js)
+        self.assertIn('editorPage?.classList.remove("hidden");', self.js)
+        self.assertIn('if(name==="system")', self.js)
+        self.assertNotIn('function showSystemSettings()', self.js)
+        self.assertNotIn('function showEditorPage()', self.js)
+
+    def test_service_restart_remains_service_action(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('data-service="restart"', template)
+
 if __name__ == "__main__":
     unittest.main()

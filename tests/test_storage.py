@@ -33,5 +33,77 @@ class StorageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             named_path("coordinates/../config.json")
 
+
+
+class ColorFileInitializationTests(unittest.TestCase):
+    def test_creates_missing_live_files_from_examples(self):
+        import tempfile
+        import json
+        from pathlib import Path
+        from unittest.mock import patch
+        import mlb_scoreboard_configurator.storage as storage
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            colors = root / "colors"
+            colors.mkdir()
+            teams_data = {"ATL": {"primary": {"r": 1, "g": 2, "b": 3}}}
+            scoreboard_data = {"default": {"r": 4, "g": 5, "b": 6}}
+            (colors / "teams.example.json").write_text(json.dumps(teams_data))
+            (colors / "scoreboard.example.json").write_text(json.dumps(scoreboard_data))
+
+            with patch.object(storage, "scoreboard_root", return_value=root):
+                created = storage.ensure_color_files()
+
+            self.assertEqual(
+                sorted(created),
+                ["colors/scoreboard.json", "colors/teams.json"],
+            )
+            self.assertEqual(
+                json.loads((colors / "teams.json").read_text()),
+                teams_data,
+            )
+            self.assertEqual(
+                json.loads((colors / "scoreboard.json").read_text()),
+                scoreboard_data,
+            )
+
+    def test_does_not_overwrite_existing_live_file(self):
+        import tempfile
+        import json
+        from pathlib import Path
+        from unittest.mock import patch
+        import mlb_scoreboard_configurator.storage as storage
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            colors = root / "colors"
+            colors.mkdir()
+            existing = {"keep": True}
+            (colors / "teams.json").write_text(json.dumps(existing))
+            (colors / "teams.example.json").write_text(json.dumps({"replace": True}))
+            (colors / "scoreboard.example.json").write_text(json.dumps({"new": True}))
+
+            with patch.object(storage, "scoreboard_root", return_value=root):
+                storage.ensure_color_files()
+
+            self.assertEqual(json.loads((colors / "teams.json").read_text()), existing)
+            self.assertEqual(json.loads((colors / "scoreboard.json").read_text()), {"new": True})
+
+    def test_missing_example_raises_clear_error(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import mlb_scoreboard_configurator.storage as storage
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "colors").mkdir()
+
+            with patch.object(storage, "scoreboard_root", return_value=root):
+                with self.assertRaises(FileNotFoundError):
+                    storage.ensure_color_files()
+
+
 if __name__ == "__main__":
     unittest.main()
