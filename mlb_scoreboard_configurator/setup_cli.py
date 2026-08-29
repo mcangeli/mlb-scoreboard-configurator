@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from .storage import ensure_color_files
 
 ENV_FILE = Path("/etc/mlb-scoreboard-configurator.env")
 SYSTEMD_DIR = Path("/etc/systemd/system")
@@ -212,6 +213,19 @@ def main():
 
     if not (root / "config.json").exists():
         raise SystemExit(f"{root} does not look like an MLB-LED-Scoreboard checkout (config.json missing).")
+
+    # Make the detected checkout visible to the shared storage helpers before
+    # systemd/environment-file installation.
+    os.environ["MLB_SCOREBOARD_ROOT"] = str(root)
+    try:
+        created_color_files = ensure_color_files()
+    except FileNotFoundError as e:
+        raise SystemExit(str(e)) from e
+
+    if created_color_files:
+        print("Created missing color configuration files:")
+        for item in created_color_files:
+            print(f"  - {item}")
 
     changed = False
     changed |= write_if_changed(

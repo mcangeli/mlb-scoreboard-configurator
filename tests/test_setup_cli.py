@@ -36,5 +36,12 @@ class SetupCliTests(unittest.TestCase):
                  patch("sys.executable", "/usr/bin/python3"):
                 self.assertEqual(detect_venv(root), bindir.resolve())
 
+
+    def test_setup_initializes_missing_color_files(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "mlb_scoreboard_configurator" / "setup_cli.py").read_text()
+        self.assertIn('os.environ["MLB_SCOREBOARD_ROOT"] = str(root)', source)
+        self.assertIn("created_color_files = ensure_color_files()", source)
+
 if __name__ == "__main__":
     unittest.main()

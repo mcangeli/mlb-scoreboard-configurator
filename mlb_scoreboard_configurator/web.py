@@ -12,7 +12,7 @@ from .system_settings import (
 )
 from .storage import (
     named_path, read_json, write_json, coordinate_files, config_schema,
-    validate, list_backups, restore_backup
+    validate, list_backups, restore_backup, ensure_color_files
 )
 
 app = Flask(__name__)
@@ -67,6 +67,7 @@ def index():
 
 @app.get("/api/bootstrap")
 def bootstrap():
+    ensure_color_files()
     files = [
         {"id": "config", "label": "config.json", "kind": "config"},
         {"id": "teams", "label": "colors/teams.json", "kind": "colors"},
@@ -86,6 +87,8 @@ def bootstrap():
 @app.get("/api/file/<path:name>")
 def get_file(name):
     try:
+        if name in ("teams", "scoreboard"):
+            ensure_color_files()
         data = read_json(named_path(name))
         payload = {"data": data, "validation": validate(name, data)}
         if name == "config":

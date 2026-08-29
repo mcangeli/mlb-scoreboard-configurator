@@ -105,3 +105,44 @@ def restore_backup(name: str, backup_id: str):
         raise FileNotFoundError("Backup not found.")
     data = read_json(src)
     return write_json(name, data)
+
+
+
+def ensure_color_files() -> list[str]:
+    """Create missing live color files from their example templates.
+
+    Existing live files are never overwritten. Returns a list of relative
+    paths that were created.
+    """
+    created: list[str] = []
+    colors_dir = scoreboard_root() / "colors"
+
+    mappings = (
+        ("teams.json", "teams.example.json"),
+        ("scoreboard.json", "scoreboard.example.json"),
+    )
+
+    for live_name, example_name in mappings:
+        live_path = colors_dir / live_name
+        example_path = colors_dir / example_name
+
+        if live_path.exists():
+            continue
+
+        if not example_path.exists():
+            raise FileNotFoundError(
+                f"Cannot create colors/{live_name}: colors/{example_name} does not exist."
+            )
+
+        # Validate the example before copying so we never create an invalid
+        # live configuration file from malformed JSON.
+        with example_path.open("r", encoding="utf-8") as fh:
+            json.load(fh)
+
+        live_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = live_path.with_suffix(live_path.suffix + ".tmp")
+        shutil.copyfile(example_path, tmp_path)
+        os.replace(tmp_path, live_path)
+        created.append(f"colors/{live_name}")
+
+    return created

@@ -342,3 +342,19 @@ It includes:
 
 Because the configurator service already runs as root for NetworkManager and
 systemctl integration, no additional sudo configuration is required.
+
+
+### Automatic creation of missing color files
+
+V2.2.0 now checks for the live color configuration files before exposing them
+in the web editor.
+
+If `colors/teams.json` is missing and `colors/teams.example.json` exists, the
+configurator creates `colors/teams.json` from that example file.
+
+If `colors/scoreboard.json` is missing and `colors/scoreboard.example.json`
+exists, the configurator creates `colors/scoreboard.json` from that example
+file.
+
+Existing live files are never overwritten. The example JSON is validated before
+it is copied.
