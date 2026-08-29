@@ -6,6 +6,10 @@ from waitress import serve
 from . import network, service
 from .settings import load_settings, save_settings, web_username, web_password
 from . import __version__
+from .system_settings import (
+    current_hostname, validate_hostname, set_hostname,
+    configurator_auth, write_auth, restart_configurator_service
+)
 from .storage import (
     named_path, read_json, write_json, coordinate_files, config_schema,
     validate, list_backups, restore_backup
@@ -180,3 +184,62 @@ def main():
     host = os.environ.get("CONFIGURATOR_HOST", "0.0.0.0")
     port = int(os.environ.get("CONFIGURATOR_PORT", "8080"))
     serve(app, host=host, port=port, threads=6)
+
+
+@app.get("/api/system/settings")
+@require_auth
+def system_settings_get():
+    auth = configurator_auth()
+    return jsonify({
+        "hostname": current_hostname(),
+        "username": auth["username"],
+        "password_set": auth["password_set"],
+    })
+
+
+@app.put("/api/system/hostname")
+@require_auth
+def system_hostname_put():
+    payload = request.get_json(silent=True) or {}
+    hostname = payload.get("hostname", "")
+    try:
+        hostname = validate_hostname(hostname)
+        set_hostname(hostname)
+        return jsonify({"ok": True, "hostname": hostname})
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Could not change hostname: {e}"}), 500
+
+
+@app.put("/api/system/auth")
+@require_auth
+def system_auth_put():
+    payload = request.get_json(silent=True) or {}
+    username = payload.get("username", "")
+    password = payload.get("password", "")
+    confirm = payload.get("confirm_password", "")
+
+    if password != confirm:
+        return jsonify({"ok": False, "error": "Passwords do not match."}), 400
+    try:
+        write_auth(username, password)
+        return jsonify({
+            "ok": True,
+            "username": username.strip(),
+            "restart_required": True,
+        })
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Could not update authentication: {e}"}), 500
+
+
+@app.post("/api/system/restart-configurator")
+@require_auth
+def system_restart_configurator():
+    try:
+        restart_configurator_service()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Could not restart configurator service: {e}"}), 500

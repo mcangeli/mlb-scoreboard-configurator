@@ -51,3 +51,17 @@ button.mini{padding:6px 9px;font-size:12px;white-space:nowrap}
 .configurator-version{display:inline-flex;align-items:center;padding:3px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:700;line-height:1.2;color:var(--muted);white-space:nowrap}
 
 .editorError{padding:14px;border:1px solid #b94b59;border-radius:8px;background:#26151b;display:grid;gap:6px}
+
+
+.hidden{display:none!important}
+.sideSection{margin-top:18px;padding-top:14px;border-top:1px solid #243047}
+.sideTitle{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8fa4bf;margin-bottom:8px}
+.sideNavButton{width:100%;text-align:left}
+.systemPage{display:grid;gap:18px}
+.pageHeader h2{margin:0 0 4px}
+.settingsCard{background:#111a28;border:1px solid #2b3a54;border-radius:10px;padding:18px;display:grid;gap:12px}
+.settingsCard h3{margin:0}
+.settingsField{display:grid;gap:6px;max-width:520px;font-weight:700}
+.settingsField input{width:100%}
+.settingsActions{display:flex;gap:10px;flex-wrap:wrap}
+.notice{padding:12px;border:1px solid #6a5a2b;background:#261f0f;border-radius:8px;display:grid;gap:10px}

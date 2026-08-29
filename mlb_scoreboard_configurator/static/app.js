@@ -411,6 +411,7 @@ function showValidation(errors){
   b.innerHTML="<strong>Validation errors:</strong><ul>"+errors.map(e=>`<li><code>${esc(e.path)}</code>: ${esc(e.message)}</li>`).join("")+"</ul>";
 }
 async function loadFile(id){
+  showEditorPage();
   const seq=++fileLoadSequence;
   const meta=bootstrap.files.find(f=>f.id===id);
   if(!meta) throw new Error(`Unknown configuration file: ${id}`);
@@ -516,3 +517,67 @@ $("#startHotspotBtn").onclick=async()=>{try{const x=await api("/api/wifi/hotspot
 $("#stopHotspotBtn").onclick=async()=>{try{const x=await api("/api/wifi/hotspot/stop",{method:"POST"});renderWifi(x.status);toast(x.message)}catch(e){toast(e.message,true)}};
 $$("[data-service]").forEach(b=>b.onclick=async()=>{const a=b.dataset.service;if((a==="stop"||a==="restart")&&!confirm(`${a[0].toUpperCase()+a.slice(1)} mlb-led-scoreboard.service?`))return;try{const x=await api("/api/service/"+a,{method:"POST"});renderService(x.status);toast(`Scoreboard service ${a} command completed.`)}catch(e){toast(e.message,true)}})
 init().catch(e=>toast(e.message,true));
+
+
+async function loadSystemSettings(){
+  const r=await api("/api/system/settings");
+  $("#piHostname").value=r.hostname||"";
+  $("#configAuthUsername").value=r.username||"";
+  $("#configAuthPassword").value="";
+  $("#configAuthPasswordConfirm").value="";
+  $("#authRestartNotice").classList.add("hidden");
+}
+function showSystemSettings(){
+  $("#systemSettingsPage").classList.remove("hidden");
+  $("#editorPage")?.classList.add("hidden");
+  loadSystemSettings().catch(e=>toast(e.message||String(e),true));
+}
+function showEditorPage(){
+  $("#systemSettingsPage")?.classList.add("hidden");
+  $("#editorPage")?.classList.remove("hidden");
+}
+$("#systemSettingsNav")?.addEventListener("click",showSystemSettings);
+
+$("#saveHostname")?.addEventListener("click",async()=>{
+  const hostname=$("#piHostname").value.trim();
+  try{
+    const r=await api("/api/system/hostname",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({hostname})
+    });
+    $("#piHostname").value=r.hostname||hostname;
+    toast("Hostname updated.");
+  }catch(e){toast(e.message||String(e),true)}
+});
+
+$("#saveConfiguratorAuth")?.addEventListener("click",async()=>{
+  const username=$("#configAuthUsername").value.trim();
+  const password=$("#configAuthPassword").value;
+  const confirm_password=$("#configAuthPasswordConfirm").value;
+  if(!username) return toast("Username cannot be empty.",true);
+  if(!password) return toast("Enter a new password.",true);
+  if(password!==confirm_password) return toast("Passwords do not match.",true);
+  try{
+    await api("/api/system/auth",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({username,password,confirm_password})
+    });
+    $("#authRestartNotice").classList.remove("hidden");
+    toast("Credentials saved. Restart required.");
+  }catch(e){toast(e.message||String(e),true)}
+});
+
+$("#restartConfiguratorAfterAuth")?.addEventListener("click",async()=>{
+  const btn=$("#restartConfiguratorAfterAuth");
+  btn.disabled=true;
+  try{
+    fetch("/api/system/restart-configurator",{method:"POST",cache:"no-store",credentials:"same-origin"});
+    toast("Configurator is restarting. Reconnect using the new login.");
+    setTimeout(()=>window.location.reload(),1800);
+  }catch(e){
+    btn.disabled=false;
+    toast(e.message||String(e),true);
+  }
+});

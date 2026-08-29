@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.10
+# MLB LED Scoreboard Configurator — V2.2.0
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -322,3 +322,23 @@ an internal RGB array before any display/hex conversion is performed.
 
 This removes the `value.map is not a function` error on `teams.json` and
 `scoreboard.json` while preserving the original `{r,g,b}` structure when saved.
+
+
+## V2.2.0 Pi / Configurator Settings page
+
+A new **Pi / Configurator Settings** page is available from the sidebar.
+
+It includes:
+
+- Raspberry Pi hostname editing using `hostnamectl`.
+- Configurator authentication username editing.
+- New password + password confirmation fields.
+- Authentication values are stored in `/etc/mlb-scoreboard-configurator.env`
+  with mode `0600`.
+- Existing unrelated configurator environment settings are preserved.
+- A restart button is shown after changing authentication so the new login can
+  be activated immediately.
+- Hostname validation follows standard Linux hostname constraints.
+
+Because the configurator service already runs as root for NetworkManager and
+systemctl integration, no additional sudo configuration is required.

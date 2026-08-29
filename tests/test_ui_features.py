@@ -41,5 +41,15 @@ class UiFeatureTests(unittest.TestCase):
         self.assertNotIn('value.map(', block)
         self.assertIn('const initialRgb=rgbArray(value);', block)
 
+
+    def test_system_settings_page_present(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="systemSettingsPage"', template)
+        self.assertIn('id="piHostname"', template)
+        self.assertIn('id="configAuthUsername"', template)
+        self.assertIn('id="configAuthPassword"', template)
+        self.assertIn('/api/system/auth', self.js)
+        self.assertIn('/api/system/hostname', self.js)
+
 if __name__ == "__main__":
     unittest.main()
