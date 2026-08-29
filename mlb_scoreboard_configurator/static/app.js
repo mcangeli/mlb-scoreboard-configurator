@@ -411,7 +411,6 @@ function showValidation(errors){
   b.innerHTML="<strong>Validation errors:</strong><ul>"+errors.map(e=>`<li><code>${esc(e.path)}</code>: ${esc(e.message)}</li>`).join("")+"</ul>";
 }
 async function loadFile(id){
-  showEditorPage();
   const seq=++fileLoadSequence;
   const meta=bootstrap.files.find(f=>f.id===id);
   if(!meta) throw new Error(`Unknown configuration file: ${id}`);
@@ -486,13 +485,34 @@ function renderService(st){
   $("#serviceDetails").innerHTML=`<p><b>Active state:</b> ${esc(st.active_state)}</p><p><b>Sub-state:</b> ${esc(st.sub_state)}</p><p><b>Enabled:</b> ${esc(st.unit_file_state)}</p>`;
 }
 async function refreshService(){renderService(await api("/api/service/status"))}
-function switchView(name){$$(".view").forEach(v=>v.classList.add("hidden"));$("#"+name+"View").classList.remove("hidden");$$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===name));if(name==="wifi")refreshWifi();if(name==="service")refreshService()}
+function switchView(name){
+  const editorPage=$("#editorPage");
+  const systemPage=$("#systemSettingsPage");
+
+  $$(".view").forEach(v=>v.classList.add("hidden"));
+  systemPage?.classList.add("hidden");
+
+  if(name==="system"){
+    editorPage?.classList.add("hidden");
+    systemPage?.classList.remove("hidden");
+    loadSystemSettings().catch(e=>toast(e.message||String(e),true));
+  }else{
+    editorPage?.classList.remove("hidden");
+    const target=$("#"+name+"View");
+    if(target) target.classList.remove("hidden");
+    if(name==="wifi") refreshWifi();
+    if(name==="service") refreshService();
+  }
+
+  $$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===name));
+}
 async function init(){
   bootstrap=await api("/api/bootstrap?ts="+Date.now());
   const fs=$("#fileSelect");
   fs.innerHTML=bootstrap.files.map(f=>`<option value="${esc(f.id)}">${esc(f.label)}</option>`).join("");
   fs.addEventListener("change",async()=>{
     try{
+      switchView("editor");
       await loadFile(fs.value);
     }catch(e){
       toast(e.message,true);
@@ -527,16 +547,6 @@ async function loadSystemSettings(){
   $("#configAuthPasswordConfirm").value="";
   $("#authRestartNotice").classList.add("hidden");
 }
-function showSystemSettings(){
-  $("#systemSettingsPage").classList.remove("hidden");
-  $("#editorPage")?.classList.add("hidden");
-  loadSystemSettings().catch(e=>toast(e.message||String(e),true));
-}
-function showEditorPage(){
-  $("#systemSettingsPage")?.classList.add("hidden");
-  $("#editorPage")?.classList.remove("hidden");
-}
-$("#systemSettingsNav")?.addEventListener("click",showSystemSettings);
 
 $("#saveHostname")?.addEventListener("click",async()=>{
   const hostname=$("#piHostname").value.trim();

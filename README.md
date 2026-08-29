@@ -358,3 +358,12 @@ file.
 
 Existing live files are never overwritten. The example JSON is validated before
 it is copied.
+
+
+### V2.2.0 navigation correction
+
+The Pi / Configurator Settings page now uses the same navigation system as the
+existing Configuration, Wi-Fi & Hotspot, and Scoreboard Service pages. Leaving
+Pi Settings correctly restores the parent editor container, so the existing
+sidebar buttons work normally. The Scoreboard Service Restart button remains a
+service action and is not used as a navigation control.

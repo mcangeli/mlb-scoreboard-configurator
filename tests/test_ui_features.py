@@ -51,5 +51,19 @@ class UiFeatureTests(unittest.TestCase):
         self.assertIn('/api/system/auth', self.js)
         self.assertIn('/api/system/hostname', self.js)
 
+
+    def test_system_page_uses_same_navigation_model(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="systemSettingsNav" class="nav sideNavButton" data-view="system"', template)
+        self.assertIn('const editorPage=$("#editorPage");', self.js)
+        self.assertIn('editorPage?.classList.remove("hidden");', self.js)
+        self.assertIn('if(name==="system")', self.js)
+        self.assertNotIn('function showSystemSettings()', self.js)
+        self.assertNotIn('function showEditorPage()', self.js)
+
+    def test_service_restart_remains_service_action(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('data-service="restart"', template)
+
 if __name__ == "__main__":
     unittest.main()
