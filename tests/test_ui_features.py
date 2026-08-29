@@ -22,5 +22,24 @@ class UiFeatureTests(unittest.TestCase):
         self.assertIn('.svPicker{', self.css)
         self.assertIn('.addItemPanel{', self.css)
 
+    def test_mlb_rgb_object_supported(self):
+        self.assertIn('["r","g","b"].every', self.js)
+        self.assertIn('rgbForOriginal', self.js)
+        self.assertIn('{r:255,g:255,b:255}', self.js)
+
+    def test_string_array_index_does_not_call_tolowercase_on_number(self):
+        self.assertIn('String(path.at(-1)).toLowerCase()', self.js)
+
+    def test_render_error_boundary_present(self):
+        self.assertIn('Structured editor render failed:', self.js)
+
+
+    def test_rgb_picker_does_not_map_raw_object_value(self):
+        start = self.js.index('if(isRgb(value)){')
+        end = self.js.index('if(typeof value==="boolean"){', start)
+        block = self.js[start:end]
+        self.assertNotIn('value.map(', block)
+        self.assertIn('const initialRgb=rgbArray(value);', block)
+
 if __name__ == "__main__":
     unittest.main()

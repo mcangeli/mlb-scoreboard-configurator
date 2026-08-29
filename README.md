@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.8
+# MLB LED Scoreboard Configurator — V2.1.10
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -292,3 +292,33 @@ array items can be removed directly from the form editor.
 Schema-defined missing properties are suggested by the browser where available.
 All additions/removals update the same JSON structure used by the raw editor and
 are still validated before saving.
+
+
+## V2.1.9 config rendering and MLB color-format fix
+
+Fixed two issues found in V2.1.8:
+
+1. String values inside arrays (for example teams, divisions, leagues, and
+   rotation screen settings in `config.json`) no longer crash the structured
+   editor. The full configuration now continues rendering after array values.
+2. MLB-LED-Scoreboard color files use objects such as
+   `{"r": 255, "g": 235, "b": 59}`. The configurator now recognizes this
+   native format as a color and displays the 2D saturation/brightness picker,
+   hue slider, preview, hex value, and R/G/B controls for it.
+
+Both the native `{r,g,b}` representation and legacy `[r,g,b]` arrays are
+supported. Edits preserve whichever representation was loaded.
+
+The `$schema` and `format` fields are now visible in the structured editor,
+and a render error boundary keeps the complete JSON available in Raw JSON mode
+if an unexpected future configuration shape is encountered.
+
+
+## V2.1.10 RGB object picker fix
+
+Fixed a remaining array-only assumption in the visual color picker. The picker
+now normalizes native MLB color objects such as `{"r":255,"g":235,"b":59}` to
+an internal RGB array before any display/hex conversion is performed.
+
+This removes the `value.map is not a function` error on `teams.json` and
+`scoreboard.json` while preserving the original `{r,g,b}` structure when saved.
