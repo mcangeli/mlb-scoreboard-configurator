@@ -24,7 +24,25 @@ async function api(url, options={}) {
   return data;
 }
 function setPath(obj,path,value){let ref=obj;for(let i=0;i<path.length-1;i++)ref=ref[path[i]];ref[path.at(-1)]=value}
-function isRgb(v){return Array.isArray(v)&&v.length===3&&v.every(n=>Number.isInteger(n)&&n>=0&&n<=255)}
+function isRgb(v){
+  if(Array.isArray(v)) return v.length===3&&v.every(n=>Number.isFinite(Number(n))&&Number(n)>=0&&Number(n)<=255);
+  if(v&&typeof v==="object"&&!Array.isArray(v)){
+    const keys=Object.keys(v);
+    return ["r","g","b"].every(k=>Number.isFinite(Number(v[k]))&&Number(v[k])>=0&&Number(v[k])<=255)
+      && keys.every(k=>["r","g","b","a"].includes(k));
+  }
+  return false;
+}
+function rgbArray(v){
+  return Array.isArray(v)
+    ? v.map(n=>Math.max(0,Math.min(255,Math.round(Number(n)))))
+    : ["r","g","b"].map(k=>Math.max(0,Math.min(255,Math.round(Number(v[k])))));
+}
+function rgbForOriginal(original,rgb){
+  if(Array.isArray(original)) return [...rgb];
+  const out={...original,r:rgb[0],g:rgb[1],b:rgb[2]};
+  return out;
+}
 function schemaAt(schema,key){return schema?.properties?.[key]||null}
 
 function getPath(obj,path){
@@ -51,14 +69,24 @@ function defaultForSchema(schema, fallbackType="string"){
   }
 }
 function inferNewValue(container,schema,requestedType){
-  if(requestedType==="rgb") return [255,255,255];
+  if(requestedType==="rgb"){
+    const sample=(container&&typeof container==="object")
+      ? Object.values(container).find(isRgb)
+      : null;
+    return sample && !Array.isArray(sample)
+      ? {r:255,g:255,b:255}
+      : ((currentFile==="teams"||currentFile==="scoreboard") ? {r:255,g:255,b:255} : [255,255,255]);
+  }
   const map={string:"string",number:"number",boolean:"boolean",object:"object",array:"array"};
   if(requestedType && map[requestedType]) return defaultForSchema(schema,map[requestedType]);
   if(schema) return defaultForSchema(schema);
 
   if(container && typeof container==="object" && !Array.isArray(container)){
     const vals=Object.values(container);
-    if(vals.some(isRgb)) return [255,255,255];
+    if(vals.some(isRgb)){
+      const sampleRgb=vals.find(isRgb);
+      return Array.isArray(sampleRgb) ? [255,255,255] : {r:255,g:255,b:255};
+    }
     const sample=vals.find(v=>v!==null && v!==undefined);
     if(Array.isArray(sample)) return [];
     if(typeof sample==="boolean") return false;
@@ -103,7 +131,9 @@ function makeControl(value,path,schema){
       return [Math.round((rp+m)*255),Math.round((gp+m)*255),Math.round((bp+m)*255)];
     };
 
-    let hsv=rgbToHsv(value);
+    const originalRgbValue=value;
+    const initialRgb=rgbArray(value);
+    let hsv=rgbToHsv(initialRgb);
 
     const preview=document.createElement("div");preview.className="rgbVisual";
     const swatch=document.createElement("div");swatch.className="rgbSwatchPreview";
@@ -157,7 +187,7 @@ function makeControl(value,path,schema){
     const commitHsv=()=>{
       const rgb=hsvToRgb(hsv);
       syncAll(rgb,true);
-      update(rgb);
+      update(rgbForOriginal(originalRgbValue,rgb));
       syncRaw();
     };
 
@@ -193,11 +223,11 @@ function makeControl(value,path,schema){
     nums.forEach(x=>x.addEventListener("input",()=>{
       const rgb=nums.map(n=>clamp(Math.round(Number(n.value)||0),0,255));
       syncAll(rgb,false);
-      update(rgb);
+      update(rgbForOriginal(originalRgbValue,rgb));
       syncRaw();
     }));
 
-    syncAll(value,false);
+    syncAll(initialRgb,false);
     box.append(preview,svWrap,sliderPanel,channels);
     wrap.append(box);
     return wrap;
@@ -214,7 +244,7 @@ function makeControl(value,path,schema){
     const x=document.createElement("select");schema.enum.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;o.selected=v===value;x.append(o)});x.onchange=()=>update(x.value);wrap.append(x);return wrap;
   }
   if(typeof value==="string"){
-    const x=document.createElement("input");x.type=(path.at(-1).toLowerCase().includes("apikey")?"password":"text");x.value=value;x.oninput=()=>update(x.value);wrap.append(x);return wrap;
+    const x=document.createElement("input");x.type=(String(path.at(-1)).toLowerCase().includes("apikey")?"password":"text");x.value=value;x.oninput=()=>update(x.value);wrap.append(x);return wrap;
   }
   // Arrays and unusual values remain editable without losing future schema compatibility.
   const x=document.createElement("textarea");x.value=JSON.stringify(value,null,2);
@@ -319,18 +349,21 @@ function renderArray(arr,schema,parent,path){
 }
 function renderObject(obj,schema,parent,path=[]){
   Object.entries(obj).forEach(([key,value])=>{
-    if(key==="$schema") return;
     const s=schemaAt(schema,key);
     if(value && typeof value==="object" && !isRgb(value)){
       const g=document.createElement("div");g.className="group";
       const h=document.createElement("div");h.className="groupHeaderRow";
       const title=document.createElement("div");title.className="groupHeader";title.textContent=s?.title||key;
-      const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
-      remove.onclick=()=>{
-        if(!confirm(`Remove "${key}" from this configuration?`)) return;
-        delete obj[key];syncRaw();renderForm();
-      };
-      h.append(title,remove);g.append(h);
+      h.append(title);
+      if(key!=="$schema" && key!=="format"){
+        const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
+        remove.onclick=()=>{
+          if(!confirm(`Remove "${key}" from this configuration?`)) return;
+          delete obj[key];syncRaw();renderForm();
+        };
+        h.append(remove);
+      }
+      g.append(h);
       if(s?.description){const d=document.createElement("div");d.className="desc";d.textContent=s.description;g.append(d)}
       if(Array.isArray(value)) renderArray(value,s,g,[...path,key]);
       else renderObject(value,s,g,[...path,key]);
@@ -344,20 +377,33 @@ function renderObject(obj,schema,parent,path=[]){
 
     const controls=document.createElement("div");controls.className="inlineControls";
     controls.append(makeControl(value,[...path,key],s));
-    const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
-    remove.onclick=()=>{
-      if(!confirm(`Remove "${key}" from this configuration?`)) return;
-      delete obj[key];syncRaw();renderForm();
-    };
-    controls.append(remove);
+    if(key!=="$schema" && key!=="format"){
+      const remove=document.createElement("button");remove.type="button";remove.className="danger mini";remove.textContent="Remove";
+      remove.onclick=()=>{
+        if(!confirm(`Remove "${key}" from this configuration?`)) return;
+        delete obj[key];syncRaw();renderForm();
+      };
+      controls.append(remove);
+    }
     row.append(info,controls);parent.append(row);
   });
   addSectionFooter(obj,schema,parent,path);
 }
 function renderForm(){
   const host=$("#formEditor");host.innerHTML="";
-  if(Array.isArray(currentData)){renderArray(currentData,currentSchema,host,[]);return}
-  renderObject(currentData,currentSchema,host,[]);
+  try{
+    if(Array.isArray(currentData)){renderArray(currentData,currentSchema,host,[]);return}
+    renderObject(currentData,currentSchema,host,[]);
+  }catch(e){
+    console.error("Structured editor render failed:",e);
+    host.innerHTML="";
+    const box=document.createElement("div");box.className="editorError";
+    const title=document.createElement("strong");title.textContent="Structured editor error";
+    const msg=document.createElement("div");msg.textContent=e?.message||String(e);
+    const help=document.createElement("div");help.className="muted";help.textContent="The complete JSON is still available in Raw JSON mode.";
+    box.append(title,msg,help);host.append(box);
+    toast(`Editor error: ${e?.message||e}`,true);
+  }
 }
 function showValidation(errors){
   const b=$("#validationBox");b.classList.remove("hidden","ok");

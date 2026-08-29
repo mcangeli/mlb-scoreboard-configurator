@@ -49,3 +49,5 @@ button.mini{padding:6px 9px;font-size:12px;white-space:nowrap}
 @media(max-width:850px){.shell{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid #243047}.grid2{grid-template-columns:1fr}.field{grid-template-columns:1fr}.toolbar{align-items:flex-start;flex-direction:column}.rgbPicker{grid-template-columns:1fr}.svWrap{grid-column:1;grid-row:auto}.svPicker{min-width:0}.hsvPicker{grid-column:1}.rgbChannels{grid-column:1}.hsvRow{grid-template-columns:54px minmax(100px,1fr) 44px}.rgbChannel{grid-template-columns:auto 1fr;flex:1;min-width:88px}.rgbChannel input[type=number]{width:100%}.addItemPanel{grid-template-columns:1fr 1fr}.addItemPanel button{width:100%}.inlineControls{flex-direction:column}.inlineControls>button{align-self:flex-start}}
 
 .configurator-version{display:inline-flex;align-items:center;padding:3px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:700;line-height:1.2;color:var(--muted);white-space:nowrap}
+
+.editorError{padding:14px;border:1px solid #b94b59;border-radius:8px;background:#26151b;display:grid;gap:6px}
