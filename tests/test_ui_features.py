@@ -33,5 +33,13 @@ class UiFeatureTests(unittest.TestCase):
     def test_render_error_boundary_present(self):
         self.assertIn('Structured editor render failed:', self.js)
 
+
+    def test_rgb_picker_does_not_map_raw_object_value(self):
+        start = self.js.index('if(isRgb(value)){')
+        end = self.js.index('if(typeof value==="boolean"){', start)
+        block = self.js[start:end]
+        self.assertNotIn('value.map(', block)
+        self.assertIn('const initialRgb=rgbArray(value);', block)
+
 if __name__ == "__main__":
     unittest.main()

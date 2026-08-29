@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V2.1.9
+# MLB LED Scoreboard Configurator — V2.1.10
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -312,3 +312,13 @@ supported. Edits preserve whichever representation was loaded.
 The `$schema` and `format` fields are now visible in the structured editor,
 and a render error boundary keeps the complete JSON available in Raw JSON mode
 if an unexpected future configuration shape is encountered.
+
+
+## V2.1.10 RGB object picker fix
+
+Fixed a remaining array-only assumption in the visual color picker. The picker
+now normalizes native MLB color objects such as `{"r":255,"g":235,"b":59}` to
+an internal RGB array before any display/hex conversion is performed.
+
+This removes the `value.map is not a function` error on `teams.json` and
+`scoreboard.json` while preserving the original `{r,g,b}` structure when saved.

@@ -159,7 +159,7 @@ function makeControl(value,path,schema){
 
     const channels=document.createElement("div");channels.className="rgbChannels";
     const names=["R","G","B"];
-    const nums=value.map((n,i)=>{
+    const nums=initialRgb.map((n,i)=>{
       const field=document.createElement("label");field.className="rgbChannel";
       const caption=document.createElement("span");caption.textContent=names[i];
       const x=document.createElement("input");x.type="number";x.min=0;x.max=255;x.step=1;x.value=n;
