@@ -4,6 +4,19 @@ A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
 targeting the v9 configuration model.
 
+## Version Highlights
+
+### V3.0.0
+
+- **Plugin management page** — A new **Plugins** page is available under the **System** heading in the web configurator.
+- **Install plugins from GitHub** — Paste a direct GitHub repository URL and install the plugin without using SSH or manually running pip commands.
+- **Uses the scoreboard virtual environment** — Plugin installation runs through the MLB-LED-Scoreboard `venv/bin/pip`, keeping plugins in the same Python environment as the scoreboard.
+- **Installed plugin list** — Displays Bullpen plugins registered under `bullpen.mlbled.plugin`, including the plugin name, package/distribution, installed version, and Python entry point.
+- **Refresh installed plugins** — Refresh the plugin list directly from the configuration page after installing or updating a plugin.
+- **Installer status and output** — Installation results and pip output are shown in the web interface to make troubleshooting easier.
+- **Safer GitHub installation** — The installer accepts direct HTTPS GitHub repository URLs while rejecting arbitrary pip arguments, local paths, SSH URLs, embedded credentials, query strings, and non-GitHub sources.
+- **Retains V2.2 features** — Pi hostname and configurator authentication management, automatic creation of missing `teams.json` and `scoreboard.json` files from their example files, Wi-Fi/hotspot management, scoreboard service controls, configuration editing, RGB color controls, backups, and validation remain available.
+
 ## V2 highlights
 
 - Friendly structured form editor plus a raw JSON editor.
