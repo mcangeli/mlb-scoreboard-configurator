@@ -24,5 +24,10 @@ class PluginManagerTests(unittest.TestCase):
             with patch.dict("os.environ", {"MLB_SCOREBOARD_ROOT": str(root)}, clear=False):
                 self.assertEqual(pm.pip_executable(), pip.resolve())
 
+    def test_rejects_bad_distribution_name(self):
+        for value in ("", "../bad", "name;rm", "a b"):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError): pm._safe_distribution_name(value)
+
 if __name__ == "__main__":
     unittest.main()

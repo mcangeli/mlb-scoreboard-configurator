@@ -76,5 +76,19 @@ class UiFeatureTests(unittest.TestCase):
         self.assertIn('/api/plugins/install', self.js)
         self.assertIn('function refreshPlugins()', self.js)
 
+    def test_plugin_update_uninstall_controls(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="removePluginConfig"',template)
+        self.assertIn('/api/plugins/update',self.js)
+        self.assertIn('/api/plugins/uninstall',self.js)
+        self.assertIn('data-plugin-update',self.js)
+        self.assertIn('data-plugin-uninstall',self.js)
+
+
+    def test_plugin_uninstall_screen_cleanup_ui(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn("rotation.screens", template)
+        self.assertIn("removed_screens", self.js)
+
 if __name__ == "__main__":
     unittest.main()

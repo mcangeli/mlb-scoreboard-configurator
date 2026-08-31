@@ -74,3 +74,5 @@ button.mini{padding:6px 9px;font-size:12px;white-space:nowrap}
 .pluginEntry{display:block;white-space:normal;overflow-wrap:anywhere}
 .pluginOutput{max-height:320px;overflow:auto;background:#0a1019;border:1px solid #2b3a54;border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
 .errorNotice{border-color:#b94b59!important;background:#26151b!important}
+
+.pluginRow{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px}.pluginMain{display:grid;gap:5px;min-width:0}.pluginActions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.pluginConfigCleanup{display:flex;align-items:flex-start;gap:9px;margin:14px 0 6px}.pluginConfigCleanup input{margin-top:3px}@media (max-width:720px){.pluginRow{grid-template-columns:1fr}.pluginActions{justify-content:flex-start}}
