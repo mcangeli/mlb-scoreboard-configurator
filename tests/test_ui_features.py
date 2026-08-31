@@ -65,5 +65,16 @@ class UiFeatureTests(unittest.TestCase):
         template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
         self.assertIn('data-service="restart"', template)
 
+
+    def test_plugins_page_present(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="pluginsNav"', template)
+        self.assertIn('data-view="plugins"', template)
+        self.assertIn('id="pluginsPage"', template)
+        self.assertIn('id="pluginGithubUrl"', template)
+        self.assertIn('id="installPluginBtn"', template)
+        self.assertIn('/api/plugins/install', self.js)
+        self.assertIn('function refreshPlugins()', self.js)
+
 if __name__ == "__main__":
     unittest.main()

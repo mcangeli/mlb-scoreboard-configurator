@@ -1,11 +1,13 @@
 import hmac
 import os
+import subprocess
 from functools import wraps
 from flask import Flask, Response, jsonify, render_template, request
 from waitress import serve
 from . import network, service
 from .settings import load_settings, save_settings, web_username, web_password
 from . import __version__
+from .plugin_manager import installed_plugins, install_plugin
 from .system_settings import (
     current_hostname, validate_hostname, set_hostname,
     configurator_auth, write_auth, restart_configurator_service
@@ -182,6 +184,31 @@ def service_status():
 def service_action(action):
     ok, message = service.action(action)
     return jsonify(ok=ok, message=message, status=service.status()), (200 if ok else 400)
+
+
+@app.get("/api/plugins")
+@require_auth
+def get_plugins():
+    try:
+        return jsonify(plugins=installed_plugins())
+    except Exception as e:
+        return jsonify(error=f"Could not enumerate installed plugins: {e}"), 500
+
+@app.post("/api/plugins/install")
+@require_auth
+def install_plugin_from_github():
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = install_plugin(str(payload.get("url", "")))
+        result["ok"] = True
+        result["plugins"] = installed_plugins()
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except subprocess.TimeoutExpired:
+        return jsonify(ok=False, error="Plugin installation timed out."), 504
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
 
 def main():
     host = os.environ.get("CONFIGURATOR_HOST", "0.0.0.0")

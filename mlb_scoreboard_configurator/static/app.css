@@ -65,3 +65,12 @@ button.mini{padding:6px 9px;font-size:12px;white-space:nowrap}
 .settingsField input{width:100%}
 .settingsActions{display:flex;gap:10px;flex-wrap:wrap}
 .notice{padding:12px;border:1px solid #6a5a2b;background:#261f0f;border-radius:8px;display:grid;gap:10px}
+
+.pluginUrlField{max-width:none}
+.pluginRow{display:grid;gap:5px;padding:12px 0;border-bottom:1px solid #26364f}
+.pluginRow:last-child{border-bottom:0}
+.pluginName{font-weight:700;font-size:16px}
+.pluginMeta{display:flex;gap:10px;flex-wrap:wrap;color:#9eb1c9;font-size:12px}
+.pluginEntry{display:block;white-space:normal;overflow-wrap:anywhere}
+.pluginOutput{max-height:320px;overflow:auto;background:#0a1019;border:1px solid #2b3a54;border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.errorNotice{border-color:#b94b59!important;background:#26151b!important}
