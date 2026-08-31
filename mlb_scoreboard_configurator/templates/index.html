@@ -115,7 +115,9 @@
         </div>
         <div class="settingsCard">
           <h3>Installed Bullpen plugins</h3>
-          <p class="muted">Registered under <code>bullpen.mlbled.plugin</code>.</p>
+          <p class="muted">Registered under <code>bullpen.mlbled.plugin</code>. Update or uninstall plugins below.</p>
+          <label class="pluginConfigCleanup"><input id="removePluginConfig" type="checkbox"><span>When uninstalling, also remove matching entries from <code>config.json → plugins</code> and <code>rotation.screens</code> if they exist.</span></label>
+          <p class="muted small">Standard JSON cannot be commented out. If selected, V3.0.5 removes the matching plugin key and any matching <code>rotation.screens</code> entries. The configurator backup mechanism preserves the previous config.</p>
           <div id="installedPlugins"><p class="muted">Loading plugins…</p></div>
         </div>
       </section>

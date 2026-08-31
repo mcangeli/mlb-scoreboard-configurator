@@ -78,3 +78,30 @@ def installed_plugins() -> list[dict]:
         })
     plugins.sort(key=lambda x: ((x["name"] or "").lower(), (x["distribution"] or "").lower()))
     return plugins
+
+
+def _safe_distribution_name(value: str) -> str:
+    value = (value or "").strip()
+    if not value:
+        raise ValueError("Plugin package name is missing.")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", value):
+        raise ValueError("Plugin package name contains unsupported characters.")
+    return value
+
+
+def update_plugin(distribution: str) -> dict:
+    distribution = _safe_distribution_name(distribution)
+    proc = subprocess.run([str(pip_executable()), "install", "--upgrade", distribution], capture_output=True, text=True, timeout=600, check=False)
+    output = "\n".join(x for x in (proc.stdout.strip(), proc.stderr.strip()) if x).strip()
+    if proc.returncode != 0:
+        raise RuntimeError(output[-12000:] if output else f"pip exited with status {proc.returncode}.")
+    return {"distribution": distribution, "output": output[-12000:]}
+
+
+def uninstall_plugin(distribution: str) -> dict:
+    distribution = _safe_distribution_name(distribution)
+    proc = subprocess.run([str(pip_executable()), "uninstall", "-y", distribution], capture_output=True, text=True, timeout=600, check=False)
+    output = "\n".join(x for x in (proc.stdout.strip(), proc.stderr.strip()) if x).strip()
+    if proc.returncode != 0:
+        raise RuntimeError(output[-12000:] if output else f"pip exited with status {proc.returncode}.")
+    return {"distribution": distribution, "output": output[-12000:]}

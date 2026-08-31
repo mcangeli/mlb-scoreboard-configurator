@@ -105,5 +105,55 @@ class ColorFileInitializationTests(unittest.TestCase):
                     storage.ensure_color_files()
 
 
+class PluginConfigCleanupTests(unittest.TestCase):
+    def test_remove_matching_plugin_config(self):
+        import tempfile, json
+        from pathlib import Path
+        from unittest.mock import patch
+        import mlb_scoreboard_configurator.storage as storage
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/"config.json").write_text(json.dumps({"plugins":{"magic_number":{"team":"ATL"},"other":{"enabled":True}}}))
+            with patch.object(storage,"scoreboard_root",return_value=root), \
+                 patch.object(storage,"state_dir",return_value=root/".configurator"):
+                result=storage.remove_plugin_config_sections(["magic_number"])
+                data=json.loads((root/"config.json").read_text())
+            self.assertEqual(result["plugin_sections"],["magic_number"])
+            self.assertNotIn("magic_number",data["plugins"])
+            self.assertIn("other",data["plugins"])
+            self.assertTrue((root/".configurator"/"backups").exists())
+
+
+    def test_removes_matching_rotation_screens(self):
+        import tempfile, json
+        from pathlib import Path
+        from unittest.mock import patch
+        import mlb_scoreboard_configurator.storage as storage
+
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"config.json").write_text(json.dumps({
+                "format": 9.0,
+                "plugins": {"magic_number": {"team":"ATL"}},
+                "rotation": {
+                    "screens": [
+                        {"kind":"game","priority":1},
+                        {"kind":"magic_number","seconds":30},
+                        {"kind":"standings","seconds":60},
+                        {"kind":"magic-number","seconds":45}
+                    ]
+                }
+            }))
+            with patch.object(storage, "scoreboard_root", return_value=root), \
+                 patch.object(storage, "state_dir", return_value=root/".configurator"):
+                result=storage.remove_plugin_config_sections(["magic_number"])
+                data=json.loads((root/"config.json").read_text())
+
+            self.assertEqual(result["plugin_sections"], ["magic_number"])
+            self.assertEqual(len(result["screens"]), 2)
+            self.assertEqual(
+                [s["kind"] for s in data["rotation"]["screens"]],
+                ["game","standings"]
+            )
+
 if __name__ == "__main__":
     unittest.main()

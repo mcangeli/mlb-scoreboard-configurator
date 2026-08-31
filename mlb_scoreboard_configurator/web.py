@@ -7,14 +7,14 @@ from waitress import serve
 from . import network, service
 from .settings import load_settings, save_settings, web_username, web_password
 from . import __version__
-from .plugin_manager import installed_plugins, install_plugin
+from .plugin_manager import installed_plugins, install_plugin, update_plugin, uninstall_plugin
 from .system_settings import (
     current_hostname, validate_hostname, set_hostname,
     configurator_auth, write_auth, restart_configurator_service
 )
 from .storage import (
     named_path, read_json, write_json, coordinate_files, config_schema,
-    validate, list_backups, restore_backup, ensure_color_files
+    validate, list_backups, restore_backup, ensure_color_files, remove_plugin_config_sections
 )
 
 app = Flask(__name__)
@@ -207,6 +207,45 @@ def install_plugin_from_github():
         return jsonify(ok=False, error=str(e)), 400
     except subprocess.TimeoutExpired:
         return jsonify(ok=False, error="Plugin installation timed out."), 504
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+
+@app.post("/api/plugins/update")
+@require_auth
+def update_installed_plugin():
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = update_plugin(str(payload.get("distribution", "")))
+        result["ok"] = True
+        result["plugins"] = installed_plugins()
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except subprocess.TimeoutExpired:
+        return jsonify(ok=False, error="Plugin update timed out."), 504
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+@app.post("/api/plugins/uninstall")
+@require_auth
+def uninstall_installed_plugin():
+    payload = request.get_json(silent=True) or {}
+    distribution = str(payload.get("distribution", ""))
+    entry_name = str(payload.get("entry_name", ""))
+    remove_config = bool(payload.get("remove_config", False))
+    try:
+        result = uninstall_plugin(distribution)
+        cleanup = remove_plugin_config_sections([entry_name, distribution]) if remove_config else {"plugin_sections": [], "screens": []}
+        result["ok"] = True
+        result["removed_config_sections"] = cleanup["plugin_sections"]
+        result["removed_screens"] = cleanup["screens"]
+        result["plugins"] = installed_plugins()
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except subprocess.TimeoutExpired:
+        return jsonify(ok=False, error="Plugin uninstall timed out."), 504
     except Exception as e:
         return jsonify(ok=False, error=str(e)), 500
 

@@ -146,3 +146,63 @@ def ensure_color_files() -> list[str]:
         created.append(f"colors/{live_name}")
 
     return created
+
+
+def _plugin_name_variants(values: list[str]) -> set[str]:
+    variants: set[str] = set()
+    for value in values:
+        name = str(value or "").strip().lower()
+        if not name:
+            continue
+        variants.add(name)
+        variants.add(name.replace("-", "_"))
+        variants.add(name.replace("_", "-"))
+    return variants
+
+
+def remove_plugin_config_sections(candidates: list[str]) -> dict:
+    """Remove matching plugin config and screen entries from config.json.
+
+    The config file is written only when something changes, so the normal
+    write_json backup behavior protects the previous configuration.
+    """
+    path = named_path("config")
+    data = read_json(path)
+    wanted = _plugin_name_variants(candidates)
+    removed_plugins: list[str] = []
+    removed_screens: list[dict] = []
+
+    plugins = data.get("plugins")
+    if isinstance(plugins, dict):
+        for key in list(plugins.keys()):
+            key_variants = _plugin_name_variants([key])
+            if wanted.intersection(key_variants):
+                removed_plugins.append(key)
+                del plugins[key]
+
+    rotation = data.get("rotation")
+    screens = rotation.get("screens") if isinstance(rotation, dict) else None
+    if isinstance(screens, list):
+        kept = []
+        for screen in screens:
+            if not isinstance(screen, dict):
+                kept.append(screen)
+                continue
+
+            kind = screen.get("kind")
+            kind_variants = _plugin_name_variants([kind]) if kind is not None else set()
+            if wanted.intersection(kind_variants):
+                removed_screens.append(screen)
+            else:
+                kept.append(screen)
+
+        if removed_screens:
+            rotation["screens"] = kept
+
+    if removed_plugins or removed_screens:
+        write_json("config", data)
+
+    return {
+        "plugin_sections": removed_plugins,
+        "screens": removed_screens,
+    }

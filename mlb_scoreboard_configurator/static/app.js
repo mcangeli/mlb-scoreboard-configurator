@@ -601,19 +601,32 @@ $("#restartConfiguratorAfterAuth")?.addEventListener("click",async()=>{
 
 function renderInstalledPlugins(plugins){
   const host=$("#installedPlugins");
-  if(!plugins?.length){
-    host.innerHTML='<p class="muted">No Bullpen plugins are currently registered.</p>';
-    return;
-  }
+  if(!plugins?.length){host.innerHTML='<p class="muted">No Bullpen plugins are currently registered.</p>';return;}
   host.innerHTML=plugins.map(p=>`
     <div class="pluginRow">
-      <div class="pluginName">${esc(p.name||p.distribution||"Plugin")}</div>
-      <div class="pluginMeta">
-        ${p.distribution?`<span>${esc(p.distribution)}</span>`:""}
-        ${p.version?`<span>v${esc(p.version)}</span>`:""}
-      </div>
-      <code class="pluginEntry">${esc(p.entry_point||"")}</code>
+      <div class="pluginMain"><div class="pluginName">${esc(p.name||p.distribution||"Plugin")}</div><div class="pluginMeta">${p.distribution?`<span>${esc(p.distribution)}</span>`:""}${p.version?`<span>v${esc(p.version)}</span>`:""}</div><code class="pluginEntry">${esc(p.entry_point||"")}</code></div>
+      <div class="pluginActions"><button type="button" class="secondary" data-plugin-update="${esc(p.distribution||"")}" ${p.distribution?"":"disabled"}>Update</button><button type="button" class="danger" data-plugin-uninstall="${esc(p.distribution||"")}" data-plugin-entry="${esc(p.name||"")}" ${p.distribution?"":"disabled"}>Uninstall</button></div>
     </div>`).join("");
+  $$('[data-plugin-update]').forEach(button=>button.addEventListener('click',async()=>{
+    const distribution=button.dataset.pluginUpdate;if(!distribution)return;button.disabled=true;
+    try{const r=await api('/api/plugins/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({distribution})});renderInstalledPlugins(r.plugins||[]);toast(`${distribution} updated.`)}catch(e){toast(e.message||String(e),true);button.disabled=false}
+  }));
+  $$('[data-plugin-uninstall]').forEach(button=>button.addEventListener('click',async()=>{
+    const distribution=button.dataset.pluginUninstall;const entryName=button.dataset.pluginEntry||'';if(!distribution)return;
+    const removeConfig=!!$("#removePluginConfig")?.checked;
+    if(!confirm(`Uninstall ${distribution}?${removeConfig?'\n\nMatching config.json → plugins and rotation.screens entries will also be removed if found.':''}`))return;
+    button.disabled=true;
+    try{const r=await api('/api/plugins/uninstall',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({distribution,entry_name:entryName,remove_config:removeConfig})});renderInstalledPlugins(r.plugins||[]);{
+      const removedPlugins=r.removed_config_sections?.length||0;
+      const removedScreens=r.removed_screens?.length||0;
+      const cleanupBits=[];
+      if(removedPlugins) cleanupBits.push(`${removedPlugins} plugin config section${removedPlugins===1?"":"s"}`);
+      if(removedScreens) cleanupBits.push(`${removedScreens} screen entr${removedScreens===1?"y":"ies"}`);
+      toast(cleanupBits.length
+        ? `Uninstalled ${distribution}; removed ${cleanupBits.join(" and ")}.`
+        : `${distribution} uninstalled.`);
+    }}catch(e){toast(e.message||String(e),true);button.disabled=false}
+  }));
 }
 
 async function refreshPlugins(){
