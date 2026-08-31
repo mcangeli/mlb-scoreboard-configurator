@@ -488,14 +488,20 @@ async function refreshService(){renderService(await api("/api/service/status"))}
 function switchView(name){
   const editorPage=$("#editorPage");
   const systemPage=$("#systemSettingsPage");
+  const pluginsPage=$("#pluginsPage");
 
   $$(".view").forEach(v=>v.classList.add("hidden"));
   systemPage?.classList.add("hidden");
+  pluginsPage?.classList.add("hidden");
 
   if(name==="system"){
     editorPage?.classList.add("hidden");
     systemPage?.classList.remove("hidden");
     loadSystemSettings().catch(e=>toast(e.message||String(e),true));
+  }else if(name==="plugins"){
+    editorPage?.classList.add("hidden");
+    pluginsPage?.classList.remove("hidden");
+    refreshPlugins().catch(e=>toast(e.message||String(e),true));
   }else{
     editorPage?.classList.remove("hidden");
     const target=$("#"+name+"View");
@@ -589,5 +595,69 @@ $("#restartConfiguratorAfterAuth")?.addEventListener("click",async()=>{
   }catch(e){
     btn.disabled=false;
     toast(e.message||String(e),true);
+  }
+});
+
+
+function renderInstalledPlugins(plugins){
+  const host=$("#installedPlugins");
+  if(!plugins?.length){
+    host.innerHTML='<p class="muted">No Bullpen plugins are currently registered.</p>';
+    return;
+  }
+  host.innerHTML=plugins.map(p=>`
+    <div class="pluginRow">
+      <div class="pluginName">${esc(p.name||p.distribution||"Plugin")}</div>
+      <div class="pluginMeta">
+        ${p.distribution?`<span>${esc(p.distribution)}</span>`:""}
+        ${p.version?`<span>v${esc(p.version)}</span>`:""}
+      </div>
+      <code class="pluginEntry">${esc(p.entry_point||"")}</code>
+    </div>`).join("");
+}
+
+async function refreshPlugins(){
+  $("#installedPlugins").innerHTML='<p class="muted">Loading plugins…</p>';
+  const result=await api("/api/plugins?ts="+Date.now());
+  renderInstalledPlugins(result.plugins||[]);
+}
+
+$("#refreshPluginsBtn")?.addEventListener("click",()=>{
+  refreshPlugins().catch(e=>toast(e.message||String(e),true));
+});
+
+$("#installPluginBtn")?.addEventListener("click",async()=>{
+  const button=$("#installPluginBtn");
+  const url=$("#pluginGithubUrl").value.trim();
+  const status=$("#pluginInstallStatus");
+  const outputWrap=$("#pluginInstallOutputWrap");
+  const output=$("#pluginInstallOutput");
+  if(!url) return toast("Paste a GitHub plugin repository URL first.",true);
+
+  button.disabled=true;
+  status.classList.remove("hidden","errorNotice");
+  status.textContent="Installing plugin…";
+  outputWrap.classList.add("hidden");
+  output.textContent="";
+
+  try{
+    const result=await api("/api/plugins/install",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({url})
+    });
+    status.textContent=`Plugin installed successfully from ${result.repository}.`;
+    output.textContent=result.output||"Installation completed successfully.";
+    outputWrap.classList.remove("hidden");
+    renderInstalledPlugins(result.plugins||[]);
+    toast("Plugin installed.");
+  }catch(e){
+    status.classList.add("errorNotice");
+    status.textContent=e.message||String(e);
+    output.textContent=e.message||String(e);
+    outputWrap.classList.remove("hidden");
+    toast(e.message||String(e),true);
+  }finally{
+    button.disabled=false;
   }
 });

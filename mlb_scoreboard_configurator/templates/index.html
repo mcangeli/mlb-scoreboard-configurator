@@ -29,6 +29,7 @@
       <div class="sideSection">
         <div class="sideTitle">System</div>
         <button id="systemSettingsNav" class="nav sideNavButton" data-view="system" type="button">Pi / Configurator Settings</button>
+        <button id="pluginsNav" class="nav sideNavButton" data-view="plugins" type="button">Plugins</button>
       </div>
 </aside>
 
@@ -87,6 +88,37 @@
     </section>
   
             </div>
+
+      <section id="pluginsPage" class="systemPage hidden">
+        <div class="pageHeader">
+          <div>
+            <h2>Scoreboard Plugins</h2>
+            <p class="muted">Install Bullpen plugins from GitHub and review the plugins registered in the scoreboard environment.</p>
+          </div>
+          <button id="refreshPluginsBtn" class="secondary" type="button">Refresh list</button>
+        </div>
+        <div class="settingsCard">
+          <h3>Install from GitHub</h3>
+          <p class="muted">Paste a GitHub repository URL. Installation uses the scoreboard's <code>venv/bin/pip</code>.</p>
+          <label class="settingsField pluginUrlField">
+            <span>GitHub repository</span>
+            <input id="pluginGithubUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://github.com/owner/plugin-repo.git">
+          </label>
+          <div class="settingsActions">
+            <button id="installPluginBtn" class="primary" type="button">Install plugin</button>
+          </div>
+          <div id="pluginInstallStatus" class="notice hidden"></div>
+          <details id="pluginInstallOutputWrap" class="hidden">
+            <summary>Installer output</summary>
+            <pre id="pluginInstallOutput" class="pluginOutput"></pre>
+          </details>
+        </div>
+        <div class="settingsCard">
+          <h3>Installed Bullpen plugins</h3>
+          <p class="muted">Registered under <code>bullpen.mlbled.plugin</code>.</p>
+          <div id="installedPlugins"><p class="muted">Loading plugins…</p></div>
+        </div>
+      </section>
 <section id="systemSettingsPage" class="systemPage hidden">
         <div class="pageHeader">
           <div>
