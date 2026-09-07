@@ -642,27 +642,40 @@ function renderInstalledPlugins(plugins){
     const distribution=button.dataset.pluginUpdate||"";
     const githubUrl=button.dataset.pluginUrl||"";
     if(!distribution)return;
-    button.disabled=true;
+
+    setPluginUpdateState(button,"updating",`Updating ${distribution}…`);
+
     try{
       const r=await api('/api/plugins/update',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({distribution,github_url:githubUrl})
       });
+
+      setPluginUpdateState(
+        button,
+        "success",
+        `${distribution} updated successfully.`,
+        r.output||""
+      );
+
       if(r.self_update&&r.restart_required){
         toast("Configurator updated. Restarting the configurator service…");
         fetch("/api/service/configurator/restart",{method:"POST",cache:"no-store",credentials:"same-origin"});
         setTimeout(()=>window.location.reload(),2500);
         return;
       }
-      renderInstalledPlugins(r.plugins||[]);
+
       toast(`${distribution} updated.`);
+      setTimeout(()=>refreshPlugins().catch(()=>{}),800);
     }catch(e){
-      toast(e.message||String(e),true);
-      button.disabled=false;
+      const detail=e?.message||String(e);
+      setPluginUpdateState(button,"error",`${distribution} update failed.`,detail);
+      toast(detail,true);
     }
   }));
-  $$('[data-plugin-uninstall]').forEach(button=>button.addEventListener('click',async()=>{
+
+$$('[data-plugin-uninstall]').forEach(button=>button.addEventListener('click',async()=>{
     const distribution=button.dataset.pluginUninstall;const entryName=button.dataset.pluginEntry||'';if(!distribution)return;
     const removeConfig=!!$("#removePluginConfig")?.checked;
     if(!confirm(`Uninstall ${distribution}?${removeConfig?'\n\nMatching config.json → plugins and rotation.screens entries will also be removed if found.':''}`))return;
@@ -765,7 +778,14 @@ function renderPluginRepository(repos,installed){
       const action=button.dataset.repoAction;
       const githubUrl=button.dataset.repoUrl||"";
       const distribution=button.dataset.repoDistribution||"";
-      button.disabled=true;
+      if(action==="update"){
+        setPluginUpdateState(button,"updating",`Updating ${distribution||"plugin"}…`);
+      }else{
+        button.dataset.originalText=button.textContent;
+        button.textContent="Installing…";
+        button.disabled=true;
+      }
+
       try{
         const endpoint=action==="install"?"/api/plugins/install":"/api/plugins/update";
         const payload=action==="install"?{url:githubUrl}:{distribution,github_url:githubUrl};
@@ -774,17 +794,38 @@ function renderPluginRepository(repos,installed){
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify(payload)
         });
+
+        if(action==="update"){
+          setPluginUpdateState(
+            button,
+            "success",
+            `${distribution||"Plugin"} updated successfully.`,
+            result.output||""
+          );
+        }
+
         if(result.self_update&&result.restart_required){
           toast("Configurator updated. Restarting the configurator service…");
           fetch("/api/service/configurator/restart",{method:"POST",cache:"no-store",credentials:"same-origin"});
           setTimeout(()=>window.location.reload(),2500);
           return;
         }
+
         toast(`Plugin ${action==="install"?"installed":"updated"}.`);
-        await Promise.all([refreshPlugins(),refreshPluginRepository()]);
+        if(action==="install"){
+          button.textContent=button.dataset.originalText||"Install";
+          button.disabled=false;
+        }
+        setTimeout(()=>Promise.all([refreshPlugins(),refreshPluginRepository()]).catch(()=>{}),800);
       }catch(e){
-        toast(e.message||String(e),true);
-        button.disabled=false;
+        const detail=e?.message||String(e);
+        if(action==="update"){
+          setPluginUpdateState(button,"error",`${distribution||"Plugin"} update failed.`,detail);
+        }else{
+          button.textContent=button.dataset.originalText||"Install";
+          button.disabled=false;
+        }
+        toast(detail,true);
       }
     });
   });
@@ -909,3 +950,45 @@ $("#savePluginRepositoryBtn")?.addEventListener("click",async()=>{
     button.disabled=false;
   }
 });
+
+
+function pluginUpdateStatusElement(button){
+  const row=button.closest(".pluginRow");
+  if(!row) return null;
+  let status=row.querySelector(".pluginUpdateStatus");
+  if(!status){
+    status=document.createElement("div");
+    status.className="pluginUpdateStatus muted small";
+    const main=row.querySelector(".pluginMain")||row;
+    main.appendChild(status);
+  }
+  return status;
+}
+
+function setPluginUpdateState(button,state,message="",details=""){
+  const status=pluginUpdateStatusElement(button);
+  if(!status) return;
+
+  if(state==="updating"){
+    if(!button.dataset.originalText) button.dataset.originalText=button.textContent;
+    button.textContent="Updating…";
+    button.disabled=true;
+    status.className="pluginUpdateStatus pluginUpdateRunning small";
+    status.innerHTML=`<span><span class="pluginSpinner" aria-hidden="true"></span>${esc(message||"Updating plugin…")}</span>`;
+    return;
+  }
+
+  button.textContent=button.dataset.originalText||"Update";
+  button.disabled=false;
+
+  if(state==="success"){
+    status.className="pluginUpdateStatus pluginUpdateSuccess small";
+    status.innerHTML=`<span>✓ ${esc(message||"Updated successfully")}</span>${details?`<details><summary>Update output</summary><pre>${esc(details)}</pre></details>`:""}`;
+  }else if(state==="error"){
+    status.className="pluginUpdateStatus pluginUpdateError small";
+    status.innerHTML=`<span>✕ ${esc(message||"Update failed")}</span>${details?`<details open><summary>Error details</summary><pre>${esc(details)}</pre></details>`:""}`;
+  }else{
+    status.textContent="";
+    status.className="pluginUpdateStatus muted small";
+  }
+}

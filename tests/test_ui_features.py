@@ -121,5 +121,13 @@ class UiFeatureTests(unittest.TestCase):
         self.assertIn('method:"PUT"', self.js)
         self.assertIn('collectPluginRepositoryEditor()', self.js)
 
+
+    def test_plugin_update_progress_ui(self):
+        self.assertIn('function setPluginUpdateState', self.js)
+        self.assertIn('"Updating…"', self.js)
+        self.assertIn('pluginSpinner', self.js)
+        self.assertIn('Update output', self.js)
+        self.assertIn('Error details', self.js)
+
 if __name__ == "__main__":
     unittest.main()

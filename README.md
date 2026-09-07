@@ -1,4 +1,4 @@
-# MLB LED Scoreboard Configurator — V3.1.1
+# MLB LED Scoreboard Configurator — V3.1.2
 
 A Bullpen-compatible Flask web configurator for
 [MLB-LED-Scoreboard](https://github.com/MLB-LED-Scoreboard/mlb-led-scoreboard),
@@ -6,7 +6,7 @@ targeting the v9 configuration model.
 
 ## Version Highlights
 
-### V3.1.1
+### V3.1.2
 
 - **Plugin management page** — A new **Plugins** page is available under the **System** heading in the web configurator.
 - **Update installed plugins** — Update an installed plugin directly from the Plugins page.
@@ -385,7 +385,7 @@ sidebar buttons work normally. The Scoreboard Service Restart button remains a
 service action and is not used as a navigation control.
 
 
-## V3.1.1 plugin management
+## V3.1.2 plugin management
 
 A new **Plugins** page appears under **System**. It can install a plugin from a direct GitHub repository URL into the scoreboard virtual environment with `venv/bin/pip install --upgrade git+<repository>`.
 
@@ -394,16 +394,16 @@ Only direct HTTPS GitHub repository URLs are accepted; arbitrary pip arguments a
 The page also lists Bullpen plugins registered through the `bullpen.mlbled.plugin` entry-point group, including entry-point name, package/distribution, version, and Python target.
 
 
-## V3.1.1 — Plugin update and uninstall
+## V3.1.2 — Plugin update and uninstall
 
 Installed Bullpen plugins now have **Update** and **Uninstall** actions. Update runs pip upgrade against the installed distribution. Uninstall removes that distribution from the scoreboard virtual environment.
 
-Standard JSON does not support comments, so plugin configuration cannot safely be “commented out.” V3.1.1 instead offers an optional uninstall checkbox that removes a matching top-level key under `config.json` → `plugins`. The normal configurator backup mechanism preserves the previous `config.json` before it is rewritten. If no matching entry is found, the rest of the configuration is left unchanged.
+Standard JSON does not support comments, so plugin configuration cannot safely be “commented out.” V3.1.2 instead offers an optional uninstall checkbox that removes a matching top-level key under `config.json` → `plugins`. The normal configurator backup mechanism preserves the previous `config.json` before it is rewritten. If no matching entry is found, the rest of the configuration is left unchanged.
 
 
 ### Plugin configuration cleanup
 
-When uninstalling a plugin, V3.1.1 can optionally clean up `config.json`.
+When uninstalling a plugin, V3.1.2 can optionally clean up `config.json`.
 Because standard JSON does not support comments, the configurator removes
 matching configuration instead of commenting it out.
 
@@ -418,7 +418,7 @@ Unrelated plugin configuration and unrelated screens are preserved. The normal
 configurator backup mechanism backs up `config.json` before it is rewritten.
 
 
-## V3.1.1 — Plugin repository and update fixes
+## V3.1.2 — Plugin repository and update fixes
 
 Plugin updates now prefer a GitHub repository URL when one is known. This fixes
 GitHub-only plugins that cannot be reliably updated with only
@@ -460,7 +460,7 @@ Other installed plugins continue to use the traditional
 `pip install --upgrade <distribution>` update method.
 
 
-## V3.1.1 — Editable plugin repository
+## V3.1.2 — Editable plugin repository
 
 The **Plugin Repository** can now be maintained directly from the web
 configurator.
@@ -484,3 +484,14 @@ On first use, the editable repository is seeded from the packaged
 
 GitHub URLs continue to be validated and normalized before they are saved.
 Duplicate repository records are rejected.
+
+
+## V3.1.2 — Plugin update progress feedback
+
+Plugin update actions now provide visible status directly in the plugin row.
+The Update button changes to **Updating…**, a spinner appears, and duplicate
+clicks are prevented while the request is running.
+
+Successful updates show **Updated successfully** with expandable pip output.
+Failed updates remain visible inline with expandable error details. The same
+feedback is used for installed-plugin updates and Plugin Repository updates.
