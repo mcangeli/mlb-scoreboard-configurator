@@ -90,5 +90,14 @@ class UiFeatureTests(unittest.TestCase):
         self.assertIn("rotation.screens", template)
         self.assertIn("removed_screens", self.js)
 
+
+    def test_plugin_repository_ui(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="pluginRepositoryList"', template)
+        self.assertIn('id="refreshPluginRepositoryBtn"', template)
+        self.assertIn('/api/plugins/repository', self.js)
+        self.assertIn('function refreshPluginRepository()', self.js)
+        self.assertIn('github_url:githubUrl', self.js)
+
 if __name__ == "__main__":
     unittest.main()

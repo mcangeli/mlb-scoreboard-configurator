@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    {
+      "name": "Magic Number",
+      "description": "Displays MLB playoff-clinching magic numbers.",
+      "github_url": "https://github.com/mcangeli/mlb-led-scoreboard-magic-number.git",
+      "distribution": "",
+      "entry_point": "magic_number"
+    },
+    {
+      "name": "Scoreboard Configurator",
+      "description": "Web configuration utility for MLB-LED-Scoreboard.",
+      "github_url": "https://github.com/mcangeli/mlb-scoreboard-configurator.git",
+      "distribution": "mlb-scoreboard-configurator",
+      "entry_point": "configurator"
+    }
+  ]
+}

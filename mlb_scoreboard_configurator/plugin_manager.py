@@ -75,6 +75,7 @@ def installed_plugins() -> list[dict]:
             "entry_point": ep.value,
             "distribution": dist_name,
             "version": version,
+            "github_url": _direct_url_for_distribution(dist_name),
         })
     plugins.sort(key=lambda x: ((x["name"] or "").lower(), (x["distribution"] or "").lower()))
     return plugins
@@ -89,14 +90,31 @@ def _safe_distribution_name(value: str) -> str:
     return value
 
 
-def update_plugin(distribution: str) -> dict:
-    distribution = _safe_distribution_name(distribution)
-    proc = subprocess.run([str(pip_executable()), "install", "--upgrade", distribution], capture_output=True, text=True, timeout=600, check=False)
+def update_plugin(distribution: str = "", github_url: str = "") -> dict:
+    distribution = (distribution or "").strip()
+    github_url = (github_url or "").strip()
+
+    if github_url:
+        repo = normalize_github_url(github_url)
+        target = f"git+{repo}"
+    elif distribution:
+        distribution = _safe_distribution_name(distribution)
+        target = distribution
+        repo = ""
+    else:
+        raise ValueError("Plugin package name or GitHub repository URL is required.")
+
+    proc = subprocess.run(
+        [str(pip_executable()), "install", "--upgrade", "--force-reinstall", target],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        check=False,
+    )
     output = "\n".join(x for x in (proc.stdout.strip(), proc.stderr.strip()) if x).strip()
     if proc.returncode != 0:
         raise RuntimeError(output[-12000:] if output else f"pip exited with status {proc.returncode}.")
-    return {"distribution": distribution, "output": output[-12000:]}
-
+    return {"distribution": distribution, "repository": repo, "output": output[-12000:]}
 
 def uninstall_plugin(distribution: str) -> dict:
     distribution = _safe_distribution_name(distribution)
@@ -105,3 +123,30 @@ def uninstall_plugin(distribution: str) -> dict:
     if proc.returncode != 0:
         raise RuntimeError(output[-12000:] if output else f"pip exited with status {proc.returncode}.")
     return {"distribution": distribution, "output": output[-12000:]}
+
+
+def repository_plugins() -> list[dict]:
+    path = Path(__file__).with_name("plugin_repository.json")
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8") as fh:
+        data = __import__("json").load(fh)
+    return [p for p in data.get("plugins", []) if isinstance(p, dict)]
+
+
+def _direct_url_for_distribution(dist_name: str) -> str:
+    if not dist_name:
+        return ""
+    try:
+        dist = importlib.metadata.distribution(dist_name)
+        raw = dist.read_text("direct_url.json")
+        if not raw:
+            return ""
+        data = __import__("json").loads(raw)
+        url = str(data.get("url") or "")
+        vcs = data.get("vcs_info") or {}
+        if vcs.get("vcs") == "git" and "github.com" in url:
+            return url[4:] if url.startswith("git+") else url
+    except Exception:
+        pass
+    return ""

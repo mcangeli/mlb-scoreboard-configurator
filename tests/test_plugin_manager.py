@@ -29,5 +29,20 @@ class PluginManagerTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError): pm._safe_distribution_name(value)
 
+
+    def test_update_from_github(self):
+        from unittest.mock import patch, Mock
+        fake=Mock(returncode=0, stdout="ok", stderr="")
+        with patch.object(pm, "pip_executable", return_value=Path("/venv/bin/pip")), \
+             patch.object(pm.subprocess, "run", return_value=fake) as run:
+            result=pm.update_plugin("package-name","https://github.com/example/plugin")
+        cmd=run.call_args.args[0]
+        self.assertIn("--force-reinstall", cmd)
+        self.assertIn("git+https://github.com/example/plugin.git", cmd)
+        self.assertEqual(result["repository"], "https://github.com/example/plugin.git")
+
+    def test_repository_catalog(self):
+        self.assertIsInstance(pm.repository_plugins(), list)
+
 if __name__ == "__main__":
     unittest.main()

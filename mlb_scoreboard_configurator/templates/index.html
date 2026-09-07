@@ -114,6 +114,17 @@
           </details>
         </div>
         <div class="settingsCard">
+          <div class="cardHeaderRow">
+            <div>
+              <h3>Plugin Repository</h3>
+              <p class="muted">Known plugins and their GitHub repositories. Install or update them with one click.</p>
+            </div>
+            <button id="refreshPluginRepositoryBtn" class="secondary" type="button">Refresh repository</button>
+          </div>
+          <div id="pluginRepositoryList"><p class="muted">Loading repository…</p></div>
+        </div>
+
+        <div class="settingsCard">
           <h3>Installed Bullpen plugins</h3>
           <p class="muted">Registered under <code>bullpen.mlbled.plugin</code>. Update or uninstall plugins below.</p>
           <label class="pluginConfigCleanup"><input id="removePluginConfig" type="checkbox"><span>When uninstalling, also remove matching entries from <code>config.json → plugins</code> and <code>rotation.screens</code> if they exist.</span></label>

@@ -502,6 +502,7 @@ function switchView(name){
     editorPage?.classList.add("hidden");
     pluginsPage?.classList.remove("hidden");
     refreshPlugins().catch(e=>toast(e.message||String(e),true));
+    refreshPluginRepository().catch(e=>toast(e.message||String(e),true));
   }else{
     editorPage?.classList.remove("hidden");
     const target=$("#"+name+"View");
@@ -605,11 +606,11 @@ function renderInstalledPlugins(plugins){
   host.innerHTML=plugins.map(p=>`
     <div class="pluginRow">
       <div class="pluginMain"><div class="pluginName">${esc(p.name||p.distribution||"Plugin")}</div><div class="pluginMeta">${p.distribution?`<span>${esc(p.distribution)}</span>`:""}${p.version?`<span>v${esc(p.version)}</span>`:""}</div><code class="pluginEntry">${esc(p.entry_point||"")}</code></div>
-      <div class="pluginActions"><button type="button" class="secondary" data-plugin-update="${esc(p.distribution||"")}" ${p.distribution?"":"disabled"}>Update</button><button type="button" class="danger" data-plugin-uninstall="${esc(p.distribution||"")}" data-plugin-entry="${esc(p.name||"")}" ${p.distribution?"":"disabled"}>Uninstall</button></div>
+      <div class="pluginActions"><button type="button" class="secondary" data-plugin-update="${esc(p.distribution||"")}" data-plugin-url="${esc(p.github_url||"")}" ${p.distribution?"":"disabled"}>Update</button><button type="button" class="danger" data-plugin-uninstall="${esc(p.distribution||"")}" data-plugin-entry="${esc(p.name||"")}" ${p.distribution?"":"disabled"}>Uninstall</button></div>
     </div>`).join("");
   $$('[data-plugin-update]').forEach(button=>button.addEventListener('click',async()=>{
     const distribution=button.dataset.pluginUpdate;if(!distribution)return;button.disabled=true;
-    try{const r=await api('/api/plugins/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({distribution})});renderInstalledPlugins(r.plugins||[]);toast(`${distribution} updated.`)}catch(e){toast(e.message||String(e),true);button.disabled=false}
+    try{const r=await api('/api/plugins/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({distribution,github_url:githubUrl})});renderInstalledPlugins(r.plugins||[]);toast(`${distribution} updated.`)}catch(e){toast(e.message||String(e),true);button.disabled=false}
   }));
   $$('[data-plugin-uninstall]').forEach(button=>button.addEventListener('click',async()=>{
     const distribution=button.dataset.pluginUninstall;const entryName=button.dataset.pluginEntry||'';if(!distribution)return;
@@ -673,4 +674,75 @@ $("#installPluginBtn")?.addEventListener("click",async()=>{
   }finally{
     button.disabled=false;
   }
+});
+
+
+function repositoryInstalledMatch(repo,installed){
+  const targetEntry=(repo.entry_point||"").toLowerCase();
+  const targetDist=(repo.distribution||"").toLowerCase();
+  return installed.find(p=>{
+    const entry=(p.name||"").toLowerCase();
+    const dist=(p.distribution||"").toLowerCase();
+    return (targetEntry && entry===targetEntry) || (targetDist && dist===targetDist);
+  })||null;
+}
+
+function renderPluginRepository(repos,installed){
+  const host=$("#pluginRepositoryList");
+  host.innerHTML=(repos||[]).map(repo=>{
+    const match=repositoryInstalledMatch(repo,installed||[]);
+    return `<div class="pluginRow repositoryPluginRow">
+      <div class="pluginMain">
+        <div class="pluginName">${esc(repo.name||repo.entry_point||repo.distribution||"Plugin")}</div>
+        ${repo.description?`<div class="muted small">${esc(repo.description)}</div>`:""}
+        <code class="pluginEntry">${esc(repo.github_url||"")}</code>
+        ${match?`<div class="pluginMeta"><span>Installed${match.version?` v${esc(match.version)}`:""}</span></div>`:""}
+      </div>
+      <div class="pluginActions">
+        <button type="button"
+                class="${match?"secondary":"primary"}"
+                data-repo-action="${match?"update":"install"}"
+                data-repo-url="${esc(repo.github_url||"")}"
+                data-repo-distribution="${esc(match?.distribution||repo.distribution||"")}">
+          ${match?"Update":"Install"}
+        </button>
+      </div>
+    </div>`;
+  }).join("")||'<p class="muted">The plugin repository is empty.</p>';
+
+  $$("[data-repo-action]").forEach(button=>{
+    button.addEventListener("click",async()=>{
+      const action=button.dataset.repoAction;
+      const githubUrl=button.dataset.repoUrl||"";
+      const distribution=button.dataset.repoDistribution||"";
+      button.disabled=true;
+      try{
+        const endpoint=action==="install"?"/api/plugins/install":"/api/plugins/update";
+        const payload=action==="install"?{url:githubUrl}:{distribution,github_url:githubUrl};
+        await api(endpoint,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(payload)
+        });
+        toast(`Plugin ${action==="install"?"installed":"updated"}.`);
+        await Promise.all([refreshPlugins(),refreshPluginRepository()]);
+      }catch(e){
+        toast(e.message||String(e),true);
+        button.disabled=false;
+      }
+    });
+  });
+}
+
+async function refreshPluginRepository(){
+  $("#pluginRepositoryList").innerHTML='<p class="muted">Loading repository…</p>';
+  const [repoResult,installedResult]=await Promise.all([
+    api("/api/plugins/repository?ts="+Date.now()),
+    api("/api/plugins?ts="+Date.now())
+  ]);
+  renderPluginRepository(repoResult.plugins||[],installedResult.plugins||[]);
+}
+
+$("#refreshPluginRepositoryBtn")?.addEventListener("click",()=>{
+  refreshPluginRepository().catch(e=>toast(e.message||String(e),true));
 });

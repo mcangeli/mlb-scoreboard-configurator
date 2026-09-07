@@ -7,7 +7,7 @@ from waitress import serve
 from . import network, service
 from .settings import load_settings, save_settings, web_username, web_password
 from . import __version__
-from .plugin_manager import installed_plugins, install_plugin, update_plugin, uninstall_plugin
+from .plugin_manager import installed_plugins, install_plugin, update_plugin, uninstall_plugin, repository_plugins
 from .system_settings import (
     current_hostname, validate_hostname, set_hostname,
     configurator_auth, write_auth, restart_configurator_service
@@ -211,12 +211,18 @@ def install_plugin_from_github():
         return jsonify(ok=False, error=str(e)), 500
 
 
+@app.get("/api/plugins/repository")
+@require_auth
+def get_plugin_repository():
+    return jsonify(plugins=repository_plugins())
+
+
 @app.post("/api/plugins/update")
 @require_auth
 def update_installed_plugin():
     payload = request.get_json(silent=True) or {}
     try:
-        result = update_plugin(str(payload.get("distribution", "")))
+        result = update_plugin(str(payload.get("distribution", "")), str(payload.get("github_url", "")))
         result["ok"] = True
         result["plugins"] = installed_plugins()
         return jsonify(result)

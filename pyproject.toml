@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlb-scoreboard-configurator"
-version = "3.0.5"
+version = "3.1.0"
 description = "Bullpen-compatible web configurator for MLB-LED-Scoreboard"
 requires-python = ">=3.9"
 dependencies = [
@@ -27,3 +27,6 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 mlb_scoreboard_configurator = ["templates/*.html", "static/*.css", "static/*.js"]
+
+[tool.setuptools.package-data]
+mlb_scoreboard_configurator = ["plugin_repository.json"]
