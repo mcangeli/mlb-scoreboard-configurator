@@ -1,6 +1,13 @@
 {
   "plugins": [
     {
+      "name": "Scoreboard Configurator",
+      "description": "Web configuration utility for MLB-LED-Scoreboard.",
+      "github_url": "https://github.com/mcangeli/mlb-scoreboard-configurator.git",
+      "distribution": "mlb-scoreboard-configurator",
+      "entry_point": "configurator"
+    },
+    {
       "name": "Magic Number",
       "description": "Displays MLB playoff-clinching magic numbers.",
       "github_url": "https://github.com/mcangeli/mlb-led-scoreboard-magic-number.git",
@@ -8,11 +15,46 @@
       "entry_point": "magic_number"
     },
     {
-      "name": "Scoreboard Configurator",
-      "description": "Web configuration utility for MLB-LED-Scoreboard.",
-      "github_url": "https://github.com/mcangeli/mlb-scoreboard-configurator.git",
-      "distribution": "mlb-scoreboard-configurator",
-      "entry_point": "configurator"
-    }
+      "name": "Big Green Monster",
+      "description": "Big Green Monster Screen.",
+      "github_url": "https://github.com/mcangeli/MLB-LED-BGS.git",
+      "distribution": "mlb-led-bgs",
+      "entry_point": "green_monster"
+    },
+    {
+      "name": "MTA-Board",
+      "description": "NY MTA Transit Times",
+      "github_url": "https://github.com/MLB-LED-Scoreboard/plugins.git#subdirectory=plugins/mta-board",
+      "distribution": "mta-board",
+      "entry_point": "mta_board"
+    },
+    {
+      "name": "LightningLane",
+      "description": "Theme Park Wait Times",
+      "github_url": "https://github.com/MLB-LED-Scoreboard/plugins/tree/main/plugins/lightninglane-led-plugin",
+      "distribution": "",
+      "entry_point": "lightninglane"
+    },
+    {
+      "name": "F1",
+      "description": "F1",
+      "github_url": "https://github.com/MLB-LED-Scoreboard/plugins/tree/main/plugins/f1-board",
+      "distribution": "",
+      "entry_point": "f1_board"
+    },
+    {
+      "name": "GrandSlam",
+      "description": "GrandSlam",
+      "github_url": "https://github.com/MLB-LED-Scoreboard/plugins/tree/main/plugins/grand-slam",
+      "distribution": "",
+      "entry_point": "grand_slam"
+    },
+    {
+      "name": "MLB Scoreboard Extra Stats",
+      "description": "Extra Stats for MLB Scoreboard",
+      "github_url": "https://github.com/MLB-LED-Scoreboard/plugins/tree/main/plugins/mlb-led-scoreboard-extra-stats",
+      "distribution": "",
+      "entry_point": "mlb_extra_stats"
+    },
   ]
 }
