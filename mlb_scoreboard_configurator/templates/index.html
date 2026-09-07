@@ -139,9 +139,28 @@
               <h3>Plugin Repository</h3>
               <p class="muted">Known plugins and their GitHub repositories. Install or update them with one click.</p>
             </div>
-            <button id="refreshPluginRepositoryBtn" class="secondary" type="button">Refresh repository</button>
+            <div class="actions">
+              <button id="editPluginRepositoryBtn" class="secondary" type="button">Edit repository</button>
+              <button id="refreshPluginRepositoryBtn" class="secondary" type="button">Refresh repository</button>
+            </div>
           </div>
           <div id="pluginRepositoryList"><p class="muted">Loading repository…</p></div>
+        </div>
+
+        <div id="pluginRepositoryEditor" class="settingsCard hidden">
+          <div class="cardHeaderRow">
+            <div>
+              <h3>Edit Plugin Repository</h3>
+              <p class="muted">Add, edit, or remove plugins from the local repository catalog.</p>
+            </div>
+            <button id="closePluginRepositoryEditorBtn" class="secondary" type="button">Close</button>
+          </div>
+          <div id="pluginRepositoryEditorRows"></div>
+          <div class="settingsActions">
+            <button id="addPluginRepositoryRowBtn" class="secondary" type="button">Add plugin</button>
+            <button id="savePluginRepositoryBtn" class="primary" type="button">Save repository</button>
+          </div>
+          <div id="pluginRepositoryEditorStatus" class="notice hidden"></div>
         </div>
 
         <div class="settingsCard">

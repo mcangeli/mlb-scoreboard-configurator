@@ -7,7 +7,7 @@ from waitress import serve
 from . import network, service
 from .settings import load_settings, save_settings, web_username, web_password
 from . import __version__
-from .plugin_manager import installed_plugins, install_plugin, update_plugin, uninstall_plugin, repository_plugins
+from .plugin_manager import installed_plugins, install_plugin, update_plugin, uninstall_plugin, repository_plugins, save_repository_plugins
 from .system_settings import (
     current_hostname, validate_hostname, set_hostname,
     configurator_auth, write_auth, restart_configurator_service
@@ -239,6 +239,19 @@ def install_plugin_from_github():
 @require_auth
 def get_plugin_repository():
     return jsonify(plugins=repository_plugins())
+
+
+@app.put("/api/plugins/repository")
+@require_auth
+def put_plugin_repository():
+    payload = request.get_json(silent=True) or {}
+    try:
+        plugins = save_repository_plugins(payload.get("plugins", []))
+        return jsonify(ok=True, plugins=plugins)
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
 
 
 @app.post("/api/plugins/update")

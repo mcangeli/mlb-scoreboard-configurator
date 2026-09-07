@@ -802,3 +802,110 @@ async function refreshPluginRepository(){
 $("#refreshPluginRepositoryBtn")?.addEventListener("click",()=>{
   refreshPluginRepository().catch(e=>toast(e.message||String(e),true));
 });
+
+
+let pluginRepositoryEditorData=[];
+
+function repositoryEditorRowHtml(plugin={},index=0){
+  return `<div class="repositoryEditorRow" data-repository-row="${index}">
+    <label class="settingsField">
+      <span>Name</span>
+      <input data-repo-field="name" value="${esc(plugin.name||"")}" placeholder="Magic Number">
+    </label>
+    <label class="settingsField repositoryWideField">
+      <span>GitHub repository</span>
+      <input data-repo-field="github_url" value="${esc(plugin.github_url||"")}" placeholder="https://github.com/owner/repository.git">
+    </label>
+    <label class="settingsField repositoryWideField">
+      <span>Description</span>
+      <input data-repo-field="description" value="${esc(plugin.description||"")}" placeholder="Short description">
+    </label>
+    <label class="settingsField">
+      <span>Distribution</span>
+      <input data-repo-field="distribution" value="${esc(plugin.distribution||"")}" placeholder="python-package-name">
+    </label>
+    <label class="settingsField">
+      <span>Bullpen entry point</span>
+      <input data-repo-field="entry_point" value="${esc(plugin.entry_point||"")}" placeholder="plugin_kind">
+    </label>
+    <div class="repositoryEditorActions">
+      <button type="button" class="danger" data-remove-repository-row="${index}">Remove</button>
+    </div>
+  </div>`;
+}
+
+function renderPluginRepositoryEditor(){
+  const host=$("#pluginRepositoryEditorRows");
+  host.innerHTML=pluginRepositoryEditorData.map((p,i)=>repositoryEditorRowHtml(p,i)).join("")
+    || '<p class="muted">No plugins are currently in the repository.</p>';
+
+  $$("[data-remove-repository-row]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const index=Number(btn.dataset.removeRepositoryRow);
+      pluginRepositoryEditorData.splice(index,1);
+      renderPluginRepositoryEditor();
+    });
+  });
+}
+
+function collectPluginRepositoryEditor(){
+  return $$("[data-repository-row]").map(row=>{
+    const value=(field)=>row.querySelector(`[data-repo-field="${field}"]`)?.value?.trim()||"";
+    return {
+      name:value("name"),
+      description:value("description"),
+      github_url:value("github_url"),
+      distribution:value("distribution"),
+      entry_point:value("entry_point")
+    };
+  });
+}
+
+async function openPluginRepositoryEditor(){
+  const result=await api("/api/plugins/repository?ts="+Date.now());
+  pluginRepositoryEditorData=(result.plugins||[]).map(p=>({...p}));
+  renderPluginRepositoryEditor();
+  $("#pluginRepositoryEditor").classList.remove("hidden");
+  $("#pluginRepositoryEditor").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+$("#editPluginRepositoryBtn")?.addEventListener("click",()=>{
+  openPluginRepositoryEditor().catch(e=>toast(e.message||String(e),true));
+});
+
+$("#closePluginRepositoryEditorBtn")?.addEventListener("click",()=>{
+  $("#pluginRepositoryEditor").classList.add("hidden");
+});
+
+$("#addPluginRepositoryRowBtn")?.addEventListener("click",()=>{
+  pluginRepositoryEditorData=collectPluginRepositoryEditor();
+  pluginRepositoryEditorData.push({
+    name:"",
+    description:"",
+    github_url:"",
+    distribution:"",
+    entry_point:""
+  });
+  renderPluginRepositoryEditor();
+});
+
+$("#savePluginRepositoryBtn")?.addEventListener("click",async()=>{
+  const button=$("#savePluginRepositoryBtn");
+  button.disabled=true;
+  try{
+    const plugins=collectPluginRepositoryEditor();
+    const result=await api("/api/plugins/repository",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({plugins})
+    });
+    pluginRepositoryEditorData=(result.plugins||[]).map(p=>({...p}));
+    renderPluginRepositoryEditor();
+    toast("Plugin repository saved.");
+    await refreshPluginRepository();
+  }catch(e){
+    toast(e.message||String(e),true);
+  }finally{
+    button.disabled=false;
+  }
+});

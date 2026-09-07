@@ -1,5 +1,6 @@
 from __future__ import annotations
 import importlib.metadata
+import json
 import os
 import re
 import subprocess
@@ -210,14 +211,89 @@ def uninstall_plugin(distribution: str) -> dict:
     return {"distribution": distribution, "output": output[-12000:]}
 
 
+
+def repository_file() -> Path:
+    """Return the editable plugin repository path.
+
+    Prefer a state-file copy so package upgrades do not overwrite user edits.
+    Seed it from the packaged catalog on first use.
+    """
+    state_path = scoreboard_root() / ".configurator" / "plugin_repository.json"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not state_path.exists():
+        packaged = Path(__file__).with_name("plugin_repository.json")
+        if packaged.exists():
+            state_path.write_text(packaged.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            state_path.write_text('{"plugins": []}\n', encoding="utf-8")
+    return state_path
+
+
+def _validate_repository_entry(entry: dict) -> dict:
+    if not isinstance(entry, dict):
+        raise ValueError("Repository entry must be an object.")
+
+    name = str(entry.get("name") or "").strip()
+    description = str(entry.get("description") or "").strip()
+    github_url = str(entry.get("github_url") or "").strip()
+    distribution = str(entry.get("distribution") or "").strip()
+    entry_point = str(entry.get("entry_point") or "").strip()
+
+    if not name:
+        raise ValueError("Plugin name is required.")
+    if not github_url:
+        raise ValueError("GitHub repository URL is required.")
+
+    github_url = normalize_github_url(github_url)
+
+    if distribution:
+        _safe_distribution_name(distribution)
+
+    if entry_point and not re.fullmatch(r"[A-Za-z0-9_.-]+", entry_point):
+        raise ValueError("Bullpen entry-point name contains unsupported characters.")
+
+    return {
+        "name": name,
+        "description": description,
+        "github_url": github_url,
+        "distribution": distribution,
+        "entry_point": entry_point,
+    }
+
+
+def save_repository_plugins(plugins: list[dict]) -> list[dict]:
+    if not isinstance(plugins, list):
+        raise ValueError("Repository must be a list of plugins.")
+
+    cleaned = [_validate_repository_entry(p) for p in plugins]
+
+    seen = set()
+    for p in cleaned:
+        key = (
+            p["github_url"].lower(),
+            p["distribution"].lower(),
+            p["entry_point"].lower(),
+        )
+        if key in seen:
+            raise ValueError(f'Duplicate repository entry: {p["name"]}')
+        seen.add(key)
+
+    path = repository_file()
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"plugins": cleaned}, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
+    return cleaned
+
+
 def repository_plugins() -> list[dict]:
-    path = Path(__file__).with_name("plugin_repository.json")
+    path = repository_file()
     if not path.exists():
         return []
     with path.open("r", encoding="utf-8") as fh:
         data = __import__("json").load(fh)
-    return [p for p in data.get("plugins", []) if isinstance(p, dict)]
-
+    plugins = data.get("plugins", [])
+    return [p for p in plugins if isinstance(p, dict)]
 
 def _direct_url_for_distribution(dist_name: str) -> str:
     if not dist_name:

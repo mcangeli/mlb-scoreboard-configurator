@@ -78,3 +78,24 @@ button.mini{padding:6px 9px;font-size:12px;white-space:nowrap}
 .pluginRow{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px}.pluginMain{display:grid;gap:5px;min-width:0}.pluginActions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.pluginConfigCleanup{display:flex;align-items:flex-start;gap:9px;margin:14px 0 6px}.pluginConfigCleanup input{margin-top:3px}@media (max-width:720px){.pluginRow{grid-template-columns:1fr}.pluginActions{justify-content:flex-start}}
 
 .repositoryPluginRow .pluginName{font-size:17px}
+
+
+.repositoryEditorRow{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  padding:14px 0;
+  border-bottom:1px solid rgba(127,127,127,.25);
+}
+.repositoryEditorRow:last-child{border-bottom:0}
+.repositoryWideField{grid-column:1/-1}
+.repositoryEditorActions{
+  grid-column:1/-1;
+  display:flex;
+  justify-content:flex-end;
+}
+@media (max-width:720px){
+  .repositoryEditorRow{grid-template-columns:1fr}
+  .repositoryWideField{grid-column:auto}
+  .repositoryEditorActions{grid-column:auto;justify-content:flex-start}
+}

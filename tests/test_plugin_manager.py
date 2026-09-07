@@ -66,7 +66,43 @@ class PluginManagerTests(unittest.TestCase):
         self.assertTrue(result["restart_required"])
 
     def test_repository_catalog(self):
-        self.assertIsInstance(pm.repository_plugins(), list)
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(pm, "scoreboard_root", return_value=Path(td)):
+                self.assertIsInstance(pm.repository_plugins(), list)
+
+
+    def test_save_repository_plugins(self):
+        import tempfile, json
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            with patch.object(pm, "scoreboard_root", return_value=root):
+                saved=pm.save_repository_plugins([{
+                    "name":"Example",
+                    "description":"Test",
+                    "github_url":"https://github.com/example/plugin",
+                    "distribution":"example-plugin",
+                    "entry_point":"example_plugin",
+                }])
+                data=json.loads((root/".configurator"/"plugin_repository.json").read_text())
+        self.assertEqual(saved[0]["github_url"],"https://github.com/example/plugin.git")
+        self.assertEqual(data["plugins"][0]["name"],"Example")
+
+    def test_repository_rejects_duplicate_entries(self):
+        import tempfile
+        from unittest.mock import patch
+        entry={
+            "name":"Example",
+            "github_url":"https://github.com/example/plugin",
+            "distribution":"example-plugin",
+            "entry_point":"example_plugin",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(pm, "scoreboard_root", return_value=Path(td)):
+                with self.assertRaises(ValueError):
+                    pm.save_repository_plugins([entry,dict(entry)])
 
 if __name__ == "__main__":
     unittest.main()

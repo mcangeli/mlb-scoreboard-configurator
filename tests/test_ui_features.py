@@ -111,5 +111,15 @@ class UiFeatureTests(unittest.TestCase):
         self.assertIn('const githubUrl=button.dataset.pluginUrl||"";', self.js)
         self.assertIn('if(r.self_update&&r.restart_required)', self.js)
 
+
+    def test_editable_plugin_repository_ui(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="editPluginRepositoryBtn"', template)
+        self.assertIn('id="pluginRepositoryEditor"', template)
+        self.assertIn('id="addPluginRepositoryRowBtn"', template)
+        self.assertIn('id="savePluginRepositoryBtn"', template)
+        self.assertIn('method:"PUT"', self.js)
+        self.assertIn('collectPluginRepositoryEditor()', self.js)
+
 if __name__ == "__main__":
     unittest.main()
