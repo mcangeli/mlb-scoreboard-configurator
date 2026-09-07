@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 
 ENTRYPOINT_GROUP = "bullpen.mlbled.plugin"
 _GITHUB_HOSTS = {"github.com", "www.github.com"}
+CONFIGURATOR_DISTRIBUTION = "mlb-scoreboard-configurator"
+CONFIGURATOR_REPOSITORY = "https://github.com/mcangeli/mlb-scoreboard-configurator.git"
 
 def scoreboard_root() -> Path:
     return Path(os.environ.get("MLB_SCOREBOARD_ROOT", "/home/pi/mlb-led-scoreboard")).expanduser().resolve()
@@ -21,6 +23,17 @@ def pip_executable() -> Path:
     if not pip.is_file():
         raise FileNotFoundError(f"Scoreboard pip was not found at {pip}.")
     return pip
+
+
+def setup_executable() -> Path:
+    setup = venv_bin() / "mlb-scoreboard-configurator-setup"
+    if not setup.is_file():
+        raise FileNotFoundError(f"Configurator setup command was not found at {setup}.")
+    return setup
+
+
+def _canonical_distribution(value: str) -> str:
+    return re.sub(r"[-_.]+", "-", (value or "").strip().lower())
 
 def normalize_github_url(value: str) -> str:
     value = (value or "").strip()
@@ -91,30 +104,102 @@ def _safe_distribution_name(value: str) -> str:
 
 
 def update_plugin(distribution: str = "", github_url: str = "") -> dict:
+    """Update an installed plugin.
+
+    The configurator itself is special: reinstall it from GitHub, rerun its
+    setup command without restarting the currently-serving process, then let
+    the browser request the service restart after this API response completes.
+
+    Other plugins use the traditional installed-distribution pip upgrade path.
+    """
     distribution = (distribution or "").strip()
     github_url = (github_url or "").strip()
+    canonical = _canonical_distribution(distribution)
 
-    if github_url:
-        repo = normalize_github_url(github_url)
-        target = f"git+{repo}"
-    elif distribution:
-        distribution = _safe_distribution_name(distribution)
-        target = distribution
-        repo = ""
-    else:
-        raise ValueError("Plugin package name or GitHub repository URL is required.")
+    if canonical == CONFIGURATOR_DISTRIBUTION:
+        repo = normalize_github_url(github_url or CONFIGURATOR_REPOSITORY)
+        proc = subprocess.run(
+            [
+                str(pip_executable()), "install",
+                "--upgrade", "--force-reinstall", f"git+{repo}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=False,
+        )
+        install_output = "\n".join(
+            x for x in (proc.stdout.strip(), proc.stderr.strip()) if x
+        ).strip()
+        if proc.returncode != 0:
+            raise RuntimeError(
+                install_output[-12000:]
+                if install_output
+                else f"pip exited with status {proc.returncode}."
+            )
 
+        setup = subprocess.run(
+            [
+                str(setup_executable()),
+                "--root", str(scoreboard_root()),
+                "--venv-bin", str(venv_bin()),
+                "--no-enable",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        setup_output = "\n".join(
+            x for x in (setup.stdout.strip(), setup.stderr.strip()) if x
+        ).strip()
+        if setup.returncode != 0:
+            combined = "\n\n".join(x for x in (install_output, setup_output) if x)
+            raise RuntimeError(
+                combined[-12000:]
+                if combined
+                else f"Configurator setup exited with status {setup.returncode}."
+            )
+
+        combined = "\n\n".join(
+            x for x in (
+                install_output,
+                "Configurator setup:\n" + setup_output if setup_output else "",
+            ) if x
+        )
+        return {
+            "distribution": distribution,
+            "repository": repo,
+            "output": combined[-12000:],
+            "self_update": True,
+            "restart_required": True,
+        }
+
+    distribution = _safe_distribution_name(distribution)
     proc = subprocess.run(
-        [str(pip_executable()), "install", "--upgrade", "--force-reinstall", target],
+        [str(pip_executable()), "install", "--upgrade", distribution],
         capture_output=True,
         text=True,
         timeout=600,
         check=False,
     )
-    output = "\n".join(x for x in (proc.stdout.strip(), proc.stderr.strip()) if x).strip()
+    output = "\n".join(
+        x for x in (proc.stdout.strip(), proc.stderr.strip()) if x
+    ).strip()
     if proc.returncode != 0:
-        raise RuntimeError(output[-12000:] if output else f"pip exited with status {proc.returncode}.")
-    return {"distribution": distribution, "repository": repo, "output": output[-12000:]}
+        raise RuntimeError(
+            output[-12000:]
+            if output
+            else f"pip exited with status {proc.returncode}."
+        )
+    return {
+        "distribution": distribution,
+        "repository": "",
+        "output": output[-12000:],
+        "self_update": False,
+        "restart_required": False,
+    }
+
 
 def uninstall_plugin(distribution: str) -> dict:
     distribution = _safe_distribution_name(distribution)

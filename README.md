@@ -442,3 +442,19 @@ source can be reused by the normal Update button.
 V3.0.5 uninstall cleanup remains available, including optional removal of
 matching `config.json -> plugins` settings and matching `rotation.screens`
 entries.
+
+
+### Configurator service controls and self-update
+
+The **Services** page now manages both `mlb-led-scoreboard.service` and
+`mlb-scoreboard-configurator.service`, with Start, Stop, and Restart controls.
+
+The Configurator's own plugin **Update** action is intentionally different from
+normal plugins. It reinstalls the Configurator from its GitHub repository with
+`--upgrade --force-reinstall`, runs `mlb-scoreboard-configurator-setup
+--no-enable` to refresh its system integration without killing the active HTTP
+request, then asks the browser to restart the Configurator service and reload
+the page.
+
+Other installed plugins continue to use the traditional
+`pip install --upgrade <distribution>` update method.

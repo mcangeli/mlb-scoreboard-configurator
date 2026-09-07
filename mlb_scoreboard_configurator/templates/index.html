@@ -76,13 +76,33 @@
     </section>
 
     <section id="serviceView" class="view hidden">
-      <div class="toolbar"><div><h2>Scoreboard service</h2><p class="muted">Control mlb-led-scoreboard.service without leaving the browser.</p></div></div>
-      <div class="panel">
-        <div id="serviceDetails"></div>
-        <div class="actions big">
-          <button data-service="start">Start</button>
-          <button data-service="restart" class="primary">Restart</button>
-          <button data-service="stop" class="danger">Stop</button>
+      <div class="toolbar">
+        <div>
+          <h2>Services</h2>
+          <p class="muted">Start, stop, or restart the scoreboard and web configurator services.</p>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <h3>MLB LED Scoreboard</h3>
+          <p class="muted small"><code>mlb-led-scoreboard.service</code></p>
+          <div id="serviceDetails"></div>
+          <div class="actions big">
+            <button data-service="start">Start</button>
+            <button data-service="restart" class="primary">Restart</button>
+            <button data-service="stop" class="danger">Stop</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Scoreboard Configurator</h3>
+          <p class="muted small"><code>mlb-scoreboard-configurator.service</code></p>
+          <div id="configuratorServiceDetails"></div>
+          <div class="actions big">
+            <button data-configurator-service="start">Start</button>
+            <button data-configurator-service="restart" class="primary">Restart</button>
+            <button data-configurator-service="stop" class="danger">Stop</button>
+          </div>
+          <p class="muted small">Stopping or restarting this service temporarily disconnects this web page.</p>
         </div>
       </div>
     </section>

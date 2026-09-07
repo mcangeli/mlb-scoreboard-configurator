@@ -480,11 +480,25 @@ async function scan(){
   }catch(e){toast(e.message,true)}
 }
 async function saveHotspot(){try{const x=await api("/api/settings",{method:"PUT",body:JSON.stringify({hotspot_enabled:$("#hotspotEnabled").checked,hotspot_ssid:$("#hotspotSsid").value,hotspot_password:$("#hotspotPassword").value})});toast("Hotspot settings saved.")}catch(e){toast(e.message,true)}}
-function renderService(st){
-  $("#serviceBadge").textContent=`Scoreboard: ${st.active_state}/${st.sub_state}`;$("#serviceBadge").className="badge "+(st.active_state==="active"?"ok":"bad");
-  $("#serviceDetails").innerHTML=`<p><b>Active state:</b> ${esc(st.active_state)}</p><p><b>Sub-state:</b> ${esc(st.sub_state)}</p><p><b>Enabled:</b> ${esc(st.unit_file_state)}</p>`;
+function serviceDetailsHtml(st){
+  return `<p><b>Active state:</b> ${esc(st.active_state)}</p><p><b>Sub-state:</b> ${esc(st.sub_state)}</p><p><b>Enabled:</b> ${esc(st.unit_file_state)}</p>`;
 }
-async function refreshService(){renderService(await api("/api/service/status"))}
+function renderService(st){
+  $("#serviceBadge").textContent=`Scoreboard: ${st.active_state}/${st.sub_state}`;
+  $("#serviceBadge").className="badge "+(st.active_state==="active"?"ok":"bad");
+  $("#serviceDetails").innerHTML=serviceDetailsHtml(st);
+}
+function renderConfiguratorService(st){
+  $("#configuratorServiceDetails").innerHTML=serviceDetailsHtml(st);
+}
+async function refreshService(){
+  const [scoreboard,configurator]=await Promise.all([
+    api("/api/service/status"),
+    api("/api/service/configurator/status")
+  ]);
+  renderService(scoreboard);
+  renderConfiguratorService(configurator);
+}
 function switchView(name){
   const editorPage=$("#editorPage");
   const systemPage=$("#systemSettingsPage");
@@ -530,6 +544,7 @@ async function init(){
   });
   renderWifi(bootstrap.wifi);
   renderService(bootstrap.service);
+  renderConfiguratorService(bootstrap.configurator_service);
   const s=bootstrap.settings;
   $("#hotspotEnabled").checked=!!s.hotspot_enabled;
   $("#hotspotSsid").value=s.hotspot_ssid;
@@ -543,6 +558,21 @@ $("#disconnectBtn").onclick=async()=>{if(!confirm("Disconnect Wi-Fi? The fallbac
 $("#startHotspotBtn").onclick=async()=>{try{const x=await api("/api/wifi/hotspot/start",{method:"POST"});renderWifi(x.status);toast(x.message)}catch(e){toast(e.message,true)}};
 $("#stopHotspotBtn").onclick=async()=>{try{const x=await api("/api/wifi/hotspot/stop",{method:"POST"});renderWifi(x.status);toast(x.message)}catch(e){toast(e.message,true)}};
 $$("[data-service]").forEach(b=>b.onclick=async()=>{const a=b.dataset.service;if((a==="stop"||a==="restart")&&!confirm(`${a[0].toUpperCase()+a.slice(1)} mlb-led-scoreboard.service?`))return;try{const x=await api("/api/service/"+a,{method:"POST"});renderService(x.status);toast(`Scoreboard service ${a} command completed.`)}catch(e){toast(e.message,true)}})
+$$("[data-configurator-service]").forEach(b=>b.onclick=async()=>{
+  const a=b.dataset.configuratorService;
+  if((a==="stop"||a==="restart")&&!confirm(`${a[0].toUpperCase()+a.slice(1)} mlb-scoreboard-configurator.service? This page will temporarily disconnect.`))return;
+  if(a==="restart"||a==="stop"){
+    fetch("/api/service/configurator/"+a,{method:"POST",cache:"no-store",credentials:"same-origin"});
+    toast(`Configurator service ${a} requested.`);
+    if(a==="restart") setTimeout(()=>window.location.reload(),2200);
+    return;
+  }
+  try{
+    const x=await api("/api/service/configurator/"+a,{method:"POST"});
+    if(x.status) renderConfiguratorService(x.status);
+    toast(`Configurator service ${a} command completed.`);
+  }catch(e){toast(e.message,true)}
+})
 init().catch(e=>toast(e.message,true));
 
 
@@ -609,8 +639,28 @@ function renderInstalledPlugins(plugins){
       <div class="pluginActions"><button type="button" class="secondary" data-plugin-update="${esc(p.distribution||"")}" data-plugin-url="${esc(p.github_url||"")}" ${p.distribution?"":"disabled"}>Update</button><button type="button" class="danger" data-plugin-uninstall="${esc(p.distribution||"")}" data-plugin-entry="${esc(p.name||"")}" ${p.distribution?"":"disabled"}>Uninstall</button></div>
     </div>`).join("");
   $$('[data-plugin-update]').forEach(button=>button.addEventListener('click',async()=>{
-    const distribution=button.dataset.pluginUpdate;if(!distribution)return;button.disabled=true;
-    try{const r=await api('/api/plugins/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({distribution,github_url:githubUrl})});renderInstalledPlugins(r.plugins||[]);toast(`${distribution} updated.`)}catch(e){toast(e.message||String(e),true);button.disabled=false}
+    const distribution=button.dataset.pluginUpdate||"";
+    const githubUrl=button.dataset.pluginUrl||"";
+    if(!distribution)return;
+    button.disabled=true;
+    try{
+      const r=await api('/api/plugins/update',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({distribution,github_url:githubUrl})
+      });
+      if(r.self_update&&r.restart_required){
+        toast("Configurator updated. Restarting the configurator service…");
+        fetch("/api/service/configurator/restart",{method:"POST",cache:"no-store",credentials:"same-origin"});
+        setTimeout(()=>window.location.reload(),2500);
+        return;
+      }
+      renderInstalledPlugins(r.plugins||[]);
+      toast(`${distribution} updated.`);
+    }catch(e){
+      toast(e.message||String(e),true);
+      button.disabled=false;
+    }
   }));
   $$('[data-plugin-uninstall]').forEach(button=>button.addEventListener('click',async()=>{
     const distribution=button.dataset.pluginUninstall;const entryName=button.dataset.pluginEntry||'';if(!distribution)return;
@@ -719,11 +769,17 @@ function renderPluginRepository(repos,installed){
       try{
         const endpoint=action==="install"?"/api/plugins/install":"/api/plugins/update";
         const payload=action==="install"?{url:githubUrl}:{distribution,github_url:githubUrl};
-        await api(endpoint,{
+        const result=await api(endpoint,{
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify(payload)
         });
+        if(result.self_update&&result.restart_required){
+          toast("Configurator updated. Restarting the configurator service…");
+          fetch("/api/service/configurator/restart",{method:"POST",cache:"no-store",credentials:"same-origin"});
+          setTimeout(()=>window.location.reload(),2500);
+          return;
+        }
         toast(`Plugin ${action==="install"?"installed":"updated"}.`);
         await Promise.all([refreshPlugins(),refreshPluginRepository()]);
       }catch(e){

@@ -99,5 +99,17 @@ class UiFeatureTests(unittest.TestCase):
         self.assertIn('function refreshPluginRepository()', self.js)
         self.assertIn('github_url:githubUrl', self.js)
 
+    def test_configurator_service_controls(self):
+        template=(self.root / "mlb_scoreboard_configurator" / "templates" / "index.html").read_text()
+        self.assertIn('id="configuratorServiceDetails"', template)
+        self.assertIn('data-configurator-service="start"', template)
+        self.assertIn('data-configurator-service="restart"', template)
+        self.assertIn('data-configurator-service="stop"', template)
+        self.assertIn('/api/service/configurator/', self.js)
+
+    def test_installed_plugin_update_defines_github_url(self):
+        self.assertIn('const githubUrl=button.dataset.pluginUrl||"";', self.js)
+        self.assertIn('if(r.self_update&&r.restart_required)', self.js)
+
 if __name__ == "__main__":
     unittest.main()

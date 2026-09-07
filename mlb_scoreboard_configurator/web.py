@@ -83,7 +83,8 @@ def bootstrap():
         files=files,
         wifi=network.status(),
         settings=load_settings(),
-        service=service.status(),
+        service=service.status("scoreboard"),
+        configurator_service=service.status("configurator"),
     )
 
 @app.get("/api/file/<path:name>")
@@ -178,12 +179,35 @@ def put_settings():
 
 @app.get("/api/service/status")
 def service_status():
-    return jsonify(service.status())
+    return jsonify(service.status("scoreboard"))
+
 
 @app.post("/api/service/<action>")
 def service_action(action):
-    ok, message = service.action(action)
-    return jsonify(ok=ok, message=message, status=service.status()), (200 if ok else 400)
+    ok, message = service.action(action, "scoreboard")
+    return jsonify(
+        ok=ok,
+        message=message,
+        status=service.status("scoreboard"),
+    ), (200 if ok else 400)
+
+
+@app.get("/api/service/configurator/status")
+def configurator_service_status():
+    return jsonify(service.status("configurator"))
+
+
+@app.post("/api/service/configurator/<action>")
+def configurator_service_action(action):
+    ok, message = service.action(action, "configurator")
+    # A restart/stop can terminate the current request before systemctl returns.
+    # This response is best-effort; the UI intentionally treats restart as
+    # fire-and-forget and reconnects after a short delay.
+    return jsonify(
+        ok=ok,
+        message=message,
+        status=service.status("configurator") if action == "start" else None,
+    ), (200 if ok else 400)
 
 
 @app.get("/api/plugins")

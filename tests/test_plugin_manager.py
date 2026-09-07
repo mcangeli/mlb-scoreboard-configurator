@@ -30,16 +30,40 @@ class PluginManagerTests(unittest.TestCase):
                 with self.assertRaises(ValueError): pm._safe_distribution_name(value)
 
 
-    def test_update_from_github(self):
+    def test_normal_plugin_update_uses_distribution(self):
         from unittest.mock import patch, Mock
         fake=Mock(returncode=0, stdout="ok", stderr="")
         with patch.object(pm, "pip_executable", return_value=Path("/venv/bin/pip")), \
              patch.object(pm.subprocess, "run", return_value=fake) as run:
-            result=pm.update_plugin("package-name","https://github.com/example/plugin")
+            result=pm.update_plugin("some-plugin","https://github.com/example/plugin")
         cmd=run.call_args.args[0]
-        self.assertIn("--force-reinstall", cmd)
-        self.assertIn("git+https://github.com/example/plugin.git", cmd)
-        self.assertEqual(result["repository"], "https://github.com/example/plugin.git")
+        self.assertEqual(cmd, ["/venv/bin/pip", "install", "--upgrade", "some-plugin"])
+        self.assertFalse(result["self_update"])
+
+    def test_configurator_update_reinstalls_and_runs_setup(self):
+        from unittest.mock import patch, Mock
+        pip_run=Mock(returncode=0, stdout="pip ok", stderr="")
+        setup_run=Mock(returncode=0, stdout="setup ok", stderr="")
+        with patch.object(pm, "pip_executable", return_value=Path("/venv/bin/pip")), \
+             patch.object(pm, "setup_executable", return_value=Path("/venv/bin/mlb-scoreboard-configurator-setup")), \
+             patch.object(pm, "scoreboard_root", return_value=Path("/scoreboard")), \
+             patch.object(pm, "venv_bin", return_value=Path("/venv/bin")), \
+             patch.object(pm.subprocess, "run", side_effect=[pip_run, setup_run]) as run:
+            result=pm.update_plugin(
+                "mlb-scoreboard-configurator",
+                "https://github.com/example/configurator"
+            )
+        pip_cmd=run.call_args_list[0].args[0]
+        setup_cmd=run.call_args_list[1].args[0]
+        self.assertIn("--force-reinstall", pip_cmd)
+        self.assertIn("git+https://github.com/example/configurator.git", pip_cmd)
+        self.assertEqual(
+            setup_cmd,
+            ["/venv/bin/mlb-scoreboard-configurator-setup",
+             "--root", "/scoreboard", "--venv-bin", "/venv/bin", "--no-enable"]
+        )
+        self.assertTrue(result["self_update"])
+        self.assertTrue(result["restart_required"])
 
     def test_repository_catalog(self):
         self.assertIsInstance(pm.repository_plugins(), list)
